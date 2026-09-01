@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==========================================================
-# Groq AI Voice Memory Core - Desktop App Launcher
+# Aashu AI Voice Memory - Desktop App Launcher
 # ==========================================================
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -9,7 +9,8 @@ cd "$SCRIPT_DIR"
 PORT=3000
 APP_URL="http://localhost:${PORT}"
 
-echo "🚀 Starting Groq AI Voice Memory System..."
+echo "🚀 Starting Aashu AI Voice Memory System..."
+
 
 # Check if port 3000 is already in use
 if lsof -Pi :${PORT} -sTCP:LISTEN -t >/dev/null ; then
