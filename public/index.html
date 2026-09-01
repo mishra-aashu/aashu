@@ -56,9 +56,9 @@
             <!-- Top Navbar -->
             <header class="top-nav">
                 <div class="status-pills">
-                    <div class="status-pill" id="system-status">
+                    <div class="status-pill" id="system-status" title="Backend Server Connection">
                         <span class="dot green" id="status-dot"></span>
-                        <span id="status-text">Backend: Online</span>
+                        <span id="status-text">Online</span>
                     </div>
                     <div class="status-pill model-select-pill" title="Select Groq AI Model">
                         <i class="fa-solid fa-brain text-cyan"></i>
@@ -70,13 +70,9 @@
                             <option value="gemma2-9b-it">Gemma 2 (9B)</option>
                         </select>
                     </div>
-                    <div class="status-pill hide-mobile">
-                        <i class="fa-solid fa-shield-halved text-purple"></i>
-                        <span>bge-small-en (CPU)</span>
-                    </div>
-                    <div class="status-pill wakeword-pill" id="wakeword-status-pill" title="Click to customize wake word">
+                    <div class="status-pill wakeword-pill" id="wakeword-status-pill" title="Click to customize Wake Word">
                         <i class="fa-solid fa-ear-listen text-pink" id="wakeword-pill-icon"></i>
-                        <span id="wakeword-label">Wake: "Hey Aashu"</span>
+                        <span id="wakeword-label">Wake: "hey aashu"</span>
                     </div>
                 </div>
 
@@ -85,10 +81,10 @@
                         <i class="fa-solid fa-download"></i>
                         <span>Install</span>
                     </button>
-                    <button class="icon-btn active-wake" id="toggle-wakeword-btn" title="Toggle Hands-Free Wake Word">
-                        <i class="fa-solid fa-ear-listen" id="wakeword-btn-icon" style="color: var(--accent-pink);"></i>
+                    <button class="icon-btn active-wake" id="toggle-wakeword-btn" title="Toggle Hands-Free Mode">
+                        <i class="fa-solid fa-microphone-lines" id="wakeword-btn-icon" style="color: var(--accent-pink);"></i>
                     </button>
-                    <button class="icon-btn" id="toggle-voice-btn" title="Toggle Speech Output">
+                    <button class="icon-btn" id="toggle-voice-btn" title="Toggle Voice Output">
                         <i class="fa-solid fa-volume-high" id="voice-icon"></i>
                     </button>
                     <button class="icon-btn" id="toggle-sidebar-btn" title="Toggle Memory Drawer">
@@ -193,6 +189,45 @@
                 <span><kbd>Space</kbd> Mic &nbsp;&bull;&nbsp; <kbd>Enter</kbd> Send &nbsp;&bull;&nbsp; <kbd>Ctrl</kbd>+<kbd>/</kbd> Search &nbsp;&bull;&nbsp; <kbd>Esc</kbd> Sidebar</span>
             </footer>
         </main>
+    </div>
+
+    <!-- Custom Wake Word Modal -->
+    <div class="modal-overlay" id="wakeword-modal" style="display: none;">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-ear-listen text-pink"></i>
+                    <h3>Customize Wake Word</h3>
+                </div>
+                <button class="icon-btn-sm" id="close-modal-btn" title="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="modal-desc">
+                Set the spoken phrase that automatically wakes up Aashu AI hands-free.
+            </p>
+            
+            <div class="modal-input-group">
+                <label for="modal-wakeword-input">Trigger Phrase</label>
+                <input type="text" id="modal-wakeword-input" placeholder="e.g. Hey Aashu, Jarvis, Computer..." />
+            </div>
+
+            <div class="modal-presets">
+                <span class="preset-label">Presets:</span>
+                <button class="preset-chip" data-phrase="Hey Aashu">Hey Aashu</button>
+                <button class="preset-chip" data-phrase="Aashu">Aashu</button>
+                <button class="preset-chip" data-phrase="Jarvis">Jarvis</button>
+                <button class="preset-chip" data-phrase="Hey AI">Hey AI</button>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancel-modal-btn">Cancel</button>
+                <button class="btn-primary" id="save-wakeword-btn">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Save Wake Word</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

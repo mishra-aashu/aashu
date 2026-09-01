@@ -240,20 +240,22 @@ html, body {
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding-bottom: 4px;
 }
 
 .status-pills {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
     align-items: center;
+    flex-wrap: nowrap;
 }
 
 .status-pill {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    padding: 8px 14px;
+    padding: 7px 13px;
     border-radius: 30px;
     font-size: 12.5px;
     display: flex;
@@ -261,6 +263,7 @@ html, body {
     gap: 8px;
     backdrop-filter: blur(12px);
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .dot {
@@ -1102,6 +1105,189 @@ kbd {
     border-color: rgba(247, 37, 133, 0.4);
     box-shadow: 0 0 12px rgba(247, 37, 133, 0.25);
 }
+
+/* Modal Popup Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(4, 7, 14, 0.75);
+    backdrop-filter: blur(14px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+    animation: fadeInModal 0.2s ease;
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.modal-card {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(14, 20, 36, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(247, 37, 133, 0.15);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-title h3 {
+    font-family: var(--font-heading);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.icon-btn-sm {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.icon-btn-sm:hover {
+    color: var(--accent-pink);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.modal-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.modal-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.modal-input-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-input-group input {
+    background: rgba(6, 10, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.modal-input-group input:focus {
+    border-color: var(--accent-pink);
+    box-shadow: 0 0 16px rgba(247, 37, 133, 0.3);
+}
+
+.modal-presets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.preset-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.preset-chip {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-chip:hover {
+    background: rgba(0, 242, 254, 0.15);
+    border-color: rgba(0, 242, 254, 0.4);
+    color: var(--accent-cyan);
+}
+
+.modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    border-radius: 12px;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-pink), #9d4edd);
+    border: none;
+    color: #fff;
+    border-radius: 12px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 16px rgba(247, 37, 133, 0.35);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 24px rgba(247, 37, 133, 0.6);
+}
+
 
 
 

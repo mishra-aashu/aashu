@@ -328,14 +328,60 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Custom Wake Word Modal Wiring
+    const wakewordModal = document.getElementById('wakeword-modal');
+    const modalWakewordInput = document.getElementById('modal-wakeword-input');
+    const saveWakewordBtn = document.getElementById('save-wakeword-btn');
+    const cancelModalBtn = document.getElementById('cancel-modal-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+
+    function openWakeWordModal() {
+        if (!wakewordModal) return;
+        if (modalWakewordInput) modalWakewordInput.value = customWakeWord;
+        wakewordModal.style.display = 'flex';
+        if (modalWakewordInput) {
+            modalWakewordInput.focus();
+            modalWakewordInput.select();
+        }
+    }
+
+    function closeWakeWordModal() {
+        if (!wakewordModal) return;
+        wakewordModal.style.display = 'none';
+    }
+
     if (wakewordStatusPill) {
-        wakewordStatusPill.addEventListener('click', () => {
-            const input = prompt("Enter your custom Wake Word phrase (e.g. 'Hey Aashu' or 'Aashu'):", customWakeWord);
-            if (input && input.trim().length > 0) {
-                customWakeWord = input.trim().toLowerCase();
+        wakewordStatusPill.addEventListener('click', openWakeWordModal);
+    }
+
+    if (saveWakewordBtn) {
+        saveWakewordBtn.addEventListener('click', () => {
+            const val = modalWakewordInput ? modalWakewordInput.value.trim() : '';
+            if (val.length > 0) {
+                customWakeWord = val.toLowerCase();
                 localStorage.setItem('aashu_wake_word', customWakeWord);
                 isWakeWordEnabled = true;
                 updateWakeWordUI();
+            }
+            closeWakeWordModal();
+        });
+    }
+
+    if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeWakeWordModal);
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeWakeWordModal);
+
+    // Preset Chips
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            if (modalWakewordInput) modalWakewordInput.value = chip.dataset.phrase;
+        });
+    });
+
+    if (modalWakewordInput) {
+        modalWakewordInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (saveWakewordBtn) saveWakewordBtn.click();
             }
         });
     }
