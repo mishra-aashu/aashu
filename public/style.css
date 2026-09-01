@@ -315,49 +315,11 @@ html, body {
 }
 
 .text-cyan { color: var(--accent-cyan); }
-.text-purple { color: var(--accent-purple); } html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background-color: #05070e;
-    background-image: 
-        radial-gradient(at 10% 10%, rgba(0, 242, 254, 0.15) 0px, transparent 40%),
-        radial-gradient(at 90% 90%, rgba(247, 37, 133, 0.15) 0px, transparent 40%),
-        radial-gradient(at 50% 50%, rgba(157, 78, 221, 0.12) 0px, transparent 60%);
-    animation: ambient-mesh 14s ease-in-out infinite alternate;
-    color: var(--text-main);
-    font-family: var(--font-body);
-}
+.text-purple { color: var(--accent-purple); }
 
 @keyframes ambient-mesh {
     0% { background-position: 0% 0%; }
     100% { background-position: 100% 100%; filter: hue-rotate(15deg); }
-}
-
-/* Main Container Layout */
-.app-container {
-    display: flex;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-}
-
-/* Sidebar Drawer */
-.memory-sidebar {
-    width: 320px;
-    min-width: 320px;
-    height: 100%;
-    background: rgba(11, 15, 26, 0.9);
-    border-right: 1px solid var(--border-color);
-    backdrop-filter: blur(20px);
-    display: flex;
-    flex-direction: column;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 20;
-}
-
-.memory-sidebar.collapsed {
-    margin-left: -320px;
 }
 
 .top-controls {

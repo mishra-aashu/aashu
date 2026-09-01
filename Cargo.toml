@@ -5,6 +5,14 @@ edition = "2021"
 authors = ["Aashu <mishra-aashu>"]
 description = "Aashu AI - Hands-Free Voice Assistant with Vector Memory"
 
+[lib]
+name = "aashu_backend"
+path = "src/lib.rs"
+
+[[bin]]
+name = "groq-memory-system"
+path = "src/main.rs"
+
 [package.metadata.deb]
 name = "aashu-ai"
 maintainer = "Aashu <mishra-aashu>"

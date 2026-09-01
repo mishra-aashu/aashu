@@ -575,21 +575,25 @@
                 : window.location.origin;
 
             try {
-                // Post memories
-                await fetch(`${API_BASE}/api/remember`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: memoryText })
-                });
-
-                // Post password if configured
                 if (appPassword && appPassword.trim()) {
+                    sessionStorage.setItem('aashu_session_password', appPassword.trim());
+                    // Post password first
                     await fetch(`${API_BASE}/api/set-password`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ password: appPassword.trim() })
                     });
                 }
+
+                // Post memories
+                await fetch(`${API_BASE}/api/remember`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-app-password': appPassword ? appPassword.trim() : ''
+                    },
+                    body: JSON.stringify({ text: memoryText })
+                });
 
                 document.getElementById('status-icon').className = 'fa-solid fa-circle-check success-icon';
                 document.getElementById('saving-heading').textContent = `Welcome, ${nickname}!`;

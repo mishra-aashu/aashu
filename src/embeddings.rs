@@ -13,9 +13,28 @@ impl EmbeddingEngine {
 
     pub fn embed_single(&self, text: &str) -> Result<Vec<f32>> {
         Ok(self.compute_vector(text))
-        vec[idx] += sign * position_decay;
-    }xczsaxxxsxz;'
-        }00
+    }
+
+    pub fn compute_vector(&self, text: &str) -> Vec<f32> {
+        let mut vec = vec![0.0f32; self.dim];
+        let lower = text.to_lowercase();
+        let tokens: Vec<&str> = lower
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if tokens.is_empty() {
+            return vec;
+        }
+
+        // 1. Unigram feature hashing with positional decay
+        for (pos, token) in tokens.iter().enumerate() {
+            let h = hash_str(token);
+            let idx = (h as usize) % self.dim;
+            let sign = if (h % 2) == 0 { 1.0 } else { -1.0 };
+            let position_decay = 1.0 / (1.0 + (pos as f32) * 0.1);
+            vec[idx] += sign * position_decay;
+        }
 
         // 2. Bigram feature hashing for semantic context
         for window in tokens.windows(2) {
@@ -54,3 +73,4 @@ fn hash_str(s: &str) -> u64 {
         acc.wrapping_mul(33).wrapping_add(b as u64)
     })
 }
+

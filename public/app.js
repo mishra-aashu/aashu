@@ -2,6 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dynamic API Base URL fallback if opened via file:// protocol directly
     const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
 
+    function getAuthHeaders() {
+        const pwd = sessionStorage.getItem('aashu_session_password') || '';
+        return pwd ? { 'x-app-password': pwd } : {};
+    }
+
     // Check Onboarding
     const isOnboarded = localStorage.getItem('aashu_user_onboarded');
     const userName = localStorage.getItem('aashu_user_name');
@@ -9,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Reset parameter check
     if (urlParamsCheck.has('reset')) {
-        fetch(`${API_BASE}/api/reset-data`, { method: 'POST' }).finally(() => {
+        fetch(`${API_BASE}/api/reset-data`, { method: 'POST', headers: { ...getAuthHeaders() } }).finally(() => {
             localStorage.clear();
             window.location.href = 'onboarding.html';
         });
@@ -47,7 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         const verifyData = await verifyRes.json();
                         if (verifyData && verifyData.success) {
+                            sessionStorage.setItem('aashu_session_password', pwd);
                             if (overlay) overlay.style.display = 'none';
+                            loadFacts();
+                            checkStatus();
                         } else {
                             if (errorMsg) {
                                 errorMsg.style.display = 'block';
@@ -632,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (currentMode === 'remember') {
                 const res = await fetch(`${API_BASE}/api/remember`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                     body: JSON.stringify({ text, model: selectedModel })
                 });
                 const data = await res.json();
@@ -647,7 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Ask Mode
                 const res = await fetch(`${API_BASE}/api/ask`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                     body: JSON.stringify({ question: text, model: selectedModel })
                 });
                 const data = await res.json();
@@ -664,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Load Memory Facts Sidebar ---
     async function loadFacts() {
         try {
-            const res = await fetch(`${API_BASE}/api/facts`);
+            const res = await fetch(`${API_BASE}/api/facts`, { headers: { ...getAuthHeaders() } });
             const data = await res.json();
             allFacts = data.facts || [];
             factsCountBadge.textContent = `${allFacts.length} Facts`;
@@ -708,7 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteFact = async function(id) {
         if (!confirm('Delete this memory fact from local vector store?')) return;
         try {
-            await fetch(`${API_BASE}/api/facts/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/api/facts/${id}`, { method: 'DELETE', headers: { ...getAuthHeaders() } });
             loadFacts();
         } catch (err) {
             alert('Failed to delete fact');

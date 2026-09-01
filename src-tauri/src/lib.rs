@@ -9,6 +9,14 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      // Auto-spawn Axum backend server in background Tokio task
+      tauri::async_runtime::spawn(async {
+        if let Err(e) = aashu_backend::start_server().await {
+          eprintln!("Error starting Axum backend server inside Tauri: {}", e);
+        }
+      });
+
       Ok(())
     })
     .run(tauri::generate_context!())
