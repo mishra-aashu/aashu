@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Dynamic API Base URL fallback if opened via file:// protocol directly
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+
     // State Variables
     let currentMode = 'ask'; // 'ask' or 'remember'
     let isVoiceOutputEnabled = true;
@@ -331,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (currentMode === 'remember') {
-                const res = await fetch('/api/remember', {
+                const res = await fetch(`${API_BASE}/api/remember`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text, model: selectedModel })
@@ -348,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // Ask Mode
-                const res = await fetch('/api/ask', {
+                const res = await fetch(`${API_BASE}/api/ask`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: text, model: selectedModel })
@@ -378,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Load Memory Facts Sidebar ---
     async function loadFacts() {
         try {
-            const res = await fetch('/api/facts');
+            const res = await fetch(`${API_BASE}/api/facts`);
             const data = await res.json();
             allFacts = data.facts || [];
             factsCountBadge.textContent = `${allFacts.length} Facts`;
@@ -411,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteFact = async function(id) {
         if (!confirm('Delete this memory fact from local vector store?')) return;
         try {
-            await fetch(`/api/facts/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/api/facts/${id}`, { method: 'DELETE' });
             loadFacts();
         } catch (err) {
             alert('Failed to delete fact');
@@ -431,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkStatus() {
         try {
-            const res = await fetch('/api/status');
+            const res = await fetch(`${API_BASE}/api/status`);
             const data = await res.json();
             systemStatusText.textContent = `Backend: ${data.status}`;
             if (statusDot) statusDot.className = 'dot green';
@@ -447,11 +450,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- PWA Installation & Service Worker ---
     let deferredPrompt = null;
 
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')
                 .then(reg => console.log('[App] Service Worker registered with scope:', reg.scope))
-                .catch(err => console.error('[App] Service Worker registration failed:', err));
+                .catch(err => console.warn('[App] Service Worker registration skipped:', err));
         });
     }
 
