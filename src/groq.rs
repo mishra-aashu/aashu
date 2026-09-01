@@ -115,8 +115,8 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         }
 
         let system_prompt = format!(
-            "You are Aashu AI, a smart personal assistant with access to long-term memory facts retrieved from a local vector database.\n\nRetrieved Memory Context:\n{}\nAnswer the user's question accurately using ONLY the retrieved facts above. Be direct, conversational, and helpful.",
-            if context_str.is_empty() { "No relevant memories found in database." } else { &context_str }
+            "You are Aashu AI, an intelligent personal AI assistant equipped with long-term vector memory.\n\nRetrieved Memory Context:\n{}\n\nInstruction:\n1. Use the retrieved memory facts above as your primary memory to answer the user's question directly, accurately, and naturally.\n2. Synthesize all relevant facts gracefully. If the retrieved facts contain details about the user's location, preferences, or history, state them clearly.\n3. Keep your tone warm, concise, and helpful. Do not mention system details like 'vector database' unless asked.",
+            if context_str.is_empty() { "No relevant memories found in vector store." } else { &context_str }
         );
 
         let payload = json!({

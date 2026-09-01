@@ -38,7 +38,6 @@
                     <img src="/icon.svg" alt="App Icon" class="brand-logo" width="32" height="32">
                     <h2>Aashu AI</h2>
                 </div>
-
                 <span class="badge" id="facts-count-badge">0 Facts</span>
             </div>
 
@@ -48,7 +47,6 @@
             </div>
 
             <div class="memory-list" id="memory-list">
-                <!-- Dynamically populated memory cards -->
                 <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Loading facts...</div>
             </div>
         </aside>
@@ -76,15 +74,20 @@
                         <i class="fa-solid fa-shield-halved text-purple"></i>
                         <span>bge-small-en (CPU)</span>
                     </div>
+                    <div class="status-pill wakeword-pill" id="wakeword-status-pill" title="Click to customize wake word">
+                        <i class="fa-solid fa-ear-listen text-pink" id="wakeword-pill-icon"></i>
+                        <span id="wakeword-label">Wake: "Hey Aashu"</span>
+                    </div>
                 </div>
 
                 <div class="top-controls">
-                    <!-- PWA Native Install Button -->
-                    <button class="install-btn" id="install-app-btn" style="display: none;" title="Install Voice Memory App on your Device">
+                    <button class="install-btn" id="install-app-btn" style="display: none;" title="Install App">
                         <i class="fa-solid fa-download"></i>
-                        <span>Install App</span>
+                        <span>Install</span>
                     </button>
-
+                    <button class="icon-btn active-wake" id="toggle-wakeword-btn" title="Toggle Hands-Free Wake Word">
+                        <i class="fa-solid fa-ear-listen" id="wakeword-btn-icon" style="color: var(--accent-pink);"></i>
+                    </button>
                     <button class="icon-btn" id="toggle-voice-btn" title="Toggle Speech Output">
                         <i class="fa-solid fa-volume-high" id="voice-icon"></i>
                     </button>
@@ -94,75 +97,100 @@
                 </div>
             </header>
 
-            <!-- Mode Selector Tabs -->
-            <div class="mode-selector">
-                <button class="mode-tab active" data-mode="ask" id="mode-ask-btn">
-                    <i class="fa-solid fa-comments"></i> Ask AI Memory (/ask)
-                </button>
-                <button class="mode-tab" data-mode="remember" id="mode-remember-btn">
-                    <i class="fa-solid fa-plus-circle"></i> Store New Memory (/remember)
-                </button>
-            </div>
+            <!-- Chat / Response Area -->
+            <div class="chat-area" id="chat-area">
 
-            <!-- Voice Interaction Hero Visualizer -->
-            <section class="voice-hero">
-                <div class="visualizer-wrapper">
-                    <canvas id="audio-wave-canvas" width="600" height="120"></canvas>
-                    <button class="mic-button" id="mic-btn" title="Click or Press Space to Speak">
-                        <i class="fa-solid fa-microphone" id="mic-icon"></i>
-                    </button>
+                <!-- Welcome / Idle State -->
+                <div class="welcome-state" id="welcome-state">
+                    <div class="welcome-visualizer">
+                        <canvas id="audio-wave-canvas" width="480" height="80"></canvas>
+                        <button class="mic-button" id="mic-btn" title="Click or Press Space to Speak">
+                            <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                        </button>
+                    </div>
+                    <p class="welcome-hint">
+                        Press <kbd>Space</kbd> or tap the mic &mdash; speak naturally, pause to auto-send.
+                    </p>
                 </div>
-                <div class="mic-status-label" id="mic-status-label">
-                    Click microphone or press <kbd>Space</kbd> to speak naturally...
-                </div>
-            </section>
 
-            <!-- Live Speech Recognition / Text Input Box -->
-            <section class="input-card glass-panel">
-                <div class="live-transcript-box" id="transcript-box">
-                    <span class="transcript-placeholder" id="transcript-placeholder">
-                        <i class="fa-solid fa-wave-square"></i> Live voice speech recognition transcript will appear here in real-time...
-                    </span>
+                <!-- AI Response Card (shown after query) -->
+                <section class="response-card glass-panel" id="response-card" style="display: none;">
+                    <div class="response-header">
+                        <div class="response-title">
+                            <i class="fa-solid fa-sparkles text-cyan"></i>
+                            <h3 id="response-heading">AI Memory Response</h3>
+                        </div>
+                        <button class="icon-btn-sm" id="speak-response-btn" title="Replay Voice Speech">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+
+                    <div class="response-body" id="response-body-text"></div>
+
+                    <!-- Context Facts -->
+                    <div class="context-facts-container" id="context-facts-container" style="display: none;">
+                        <h4><i class="fa-solid fa-database"></i> Facts Retrieved From Local Vector DB:</h4>
+                        <div class="context-facts-grid" id="context-facts-grid"></div>
+                    </div>
+                </section>
+
+            </div><!-- end chat-area -->
+
+            <!-- ====================================================
+                 UNIFIED INPUT BAR (bottom of screen, always visible)
+                 ==================================================== -->
+            <div class="unified-input-bar" id="unified-input-bar">
+
+                <!-- Live Transcript strip (appears above input when speaking) -->
+                <div class="live-transcript-strip" id="transcript-box" style="display: none;">
+                    <i class="fa-solid fa-wave-square text-cyan"></i>
                     <span id="transcript-text" class="transcript-text"></span>
                     <span id="interim-text" class="interim-text"></span>
                 </div>
 
-                <div class="input-form">
-                    <textarea id="manual-text-input" rows="2" placeholder="Or type your request here... (Press Enter to send, Shift+Enter for newline)"></textarea>
-                    <button class="send-btn" id="send-btn">
-                        <span>Send</span>
+                <!-- Hidden placeholder (needed by JS for compat) -->
+                <span id="transcript-placeholder" style="display: none;"></span>
+
+                <!-- Main Input Row -->
+                <div class="input-row">
+
+                    <!-- Mode Toggle Pills (left side of bar) -->
+                    <div class="mode-pills-inline">
+                        <button class="mode-pill active" id="mode-ask-btn" data-mode="ask" title="Ask AI Memory">
+                            <i class="fa-solid fa-comments"></i>
+                            <span>Ask</span>
+                        </button>
+                        <button class="mode-pill" id="mode-remember-btn" data-mode="remember" title="Store New Memory">
+                            <i class="fa-solid fa-plus-circle"></i>
+                            <span>Remember</span>
+                        </button>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="input-divider"></div>
+
+                    <!-- Inline Mic Button -->
+                    <button class="mic-btn-inline" id="mic-btn-2" title="Voice Input (Space)">
+                        <i class="fa-solid fa-microphone" id="mic-icon-2"></i>
+                    </button>
+
+                    <!-- Text Input -->
+                    <textarea id="manual-text-input" rows="1" placeholder="Ask anything or share a memory to store..."></textarea>
+
+                    <!-- Send Button -->
+                    <button class="send-btn" id="send-btn" title="Send (Enter)">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
-                </div>
-            </section>
 
-            <!-- Output / Response Display -->
-            <section class="response-card glass-panel" id="response-card" style="display: none;">
-                <div class="response-header">
-                    <div class="response-title">
-                        <i class="fa-solid fa-sparkles text-cyan"></i>
-                        <h3 id="response-heading">AI Memory Response</h3>
-                    </div>
-                    <button class="icon-btn-sm" id="speak-response-btn" title="Replay Voice Speech">
-                        <i class="fa-solid fa-volume-high"></i>
-                    </button>
-                </div>
+                </div><!-- end input-row -->
 
-                <div class="response-body" id="response-body-text">
-                    <!-- AI Answer typed here -->
-                </div>
+                <!-- Mic status / auto-submit indicator -->
+                <div class="mic-status-label" id="mic-status-label" style="display: none;"></div>
 
-                <!-- Context Facts Pill Container -->
-                <div class="context-facts-container" id="context-facts-container" style="display: none;">
-                    <h4><i class="fa-solid fa-database"></i> Facts Retrieved From Local Vector DB:</h4>
-                    <div class="context-facts-grid" id="context-facts-grid">
-                        <!-- Fact cards loaded here -->
-                    </div>
-                </div>
-            </section>
+            </div><!-- end unified-input-bar -->
 
             <footer class="app-footer">
-                <span>Shortcuts: <kbd>Space</kbd> Mic | <kbd>Enter</kbd> Send | <kbd>Ctrl</kbd>+<kbd>/</kbd> Search | <kbd>Esc</kbd> Sidebar</span>
+                <span><kbd>Space</kbd> Mic &nbsp;&bull;&nbsp; <kbd>Enter</kbd> Send &nbsp;&bull;&nbsp; <kbd>Ctrl</kbd>+<kbd>/</kbd> Search &nbsp;&bull;&nbsp; <kbd>Esc</kbd> Sidebar</span>
             </footer>
         </main>
     </div>

@@ -796,7 +796,6 @@ kbd {
     }
 }
 
-/* Model Selector Dropdown Styling */
 .model-select-pill {
     padding: 4px 10px;
     transition: all 0.2s ease;
@@ -822,5 +821,288 @@ kbd {
     padding: 8px;
     font-size: 13px;
 }
+
+/* =============================================
+   MAIN CONTENT — FULL HEIGHT FLEX LAYOUT
+   ============================================= */
+.main-content {
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-width: 860px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 28px;
+    gap: 0;
+}
+
+/* Chat Area — scrollable, grows to fill space */
+.chat-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px 0 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,242,254,0.2) transparent;
+}
+
+/* Welcome / Idle State */
+.welcome-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 20px 0 30px 0;
+}
+
+.welcome-visualizer {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-visualizer canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+}
+
+.welcome-hint {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    text-align: center;
+    font-weight: 500;
+    line-height: 1.6;
+}
+
+/* =============================================
+   UNIFIED INPUT BAR
+   ============================================= */
+.unified-input-bar {
+    border-top: 1px solid rgba(255,255,255,0.07);
+    background: rgba(8, 12, 22, 0.85);
+    backdrop-filter: blur(24px);
+    padding: 12px 0 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Live transcript strip — appears above input when mic is active */
+.live-transcript-strip {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-main);
+    background: rgba(0, 242, 254, 0.05);
+    border: 1px solid rgba(0, 242, 254, 0.15);
+    border-radius: 12px;
+    padding: 10px 14px;
+    min-height: 40px;
+    animation: fadeInDown 0.2s ease;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The main input row */
+.input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 22, 40, 0.8);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 6px 10px 6px 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-row:focus-within {
+    border-color: rgba(0, 242, 254, 0.4);
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.12);
+}
+
+/* Mode Pills inside the input bar */
+.mode-pills-inline {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.mode-pill {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    border-radius: 12px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: var(--font-heading);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.mode-pill:hover {
+    background: rgba(255,255,255,0.07);
+    color: var(--text-main);
+}
+
+.mode-pill.active {
+    background: rgba(0, 242, 254, 0.15);
+    border-color: rgba(0, 242, 254, 0.35);
+    color: var(--accent-cyan);
+}
+
+/* Vertical divider between pills and mic */
+.input-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+
+/* Inline Mic Button (inside input bar) */
+.mic-btn-inline {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.mic-btn-inline:hover {
+    background: rgba(0, 242, 254, 0.15);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0,242,254,0.25);
+}
+
+.mic-btn-inline.recording {
+    background: rgba(247, 37, 133, 0.2);
+    color: var(--accent-pink);
+    box-shadow: 0 0 16px rgba(247,37,133,0.4);
+    animation: pulse-ring 1.2s ease-in-out infinite;
+}
+
+/* Auto-grow textarea */
+.input-row textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    line-height: 1.5;
+    resize: none;
+    max-height: 130px;
+    overflow-y: auto;
+    padding: 7px 4px;
+    min-height: 38px;
+    scrollbar-width: thin;
+}
+
+.input-row textarea::placeholder {
+    color: rgba(148, 163, 184, 0.5);
+}
+
+/* Send Button */
+.send-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    color: #07090f;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+}
+
+.send-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.55);
+}
+
+/* Mic status label in input bar */
+.mic-status-label {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 0 4px;
+    min-height: 0;
+    text-align: center;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+/* Footer */
+.app-footer {
+    text-align: center;
+    font-size: 11.5px;
+    color: rgba(148, 163, 184, 0.4);
+    padding: 6px 0 10px 0;
+}
+
+/* Wake Word Pill & Controls */
+.wakeword-pill {
+    cursor: pointer;
+    border: 1px solid rgba(247, 37, 133, 0.25);
+    background: rgba(247, 37, 133, 0.08);
+    transition: all 0.25s ease;
+}
+
+.wakeword-pill:hover {
+    border-color: var(--accent-pink);
+    box-shadow: 0 0 14px rgba(247, 37, 133, 0.35);
+}
+
+.wakeword-pill.listening-active {
+    animation: wake-pulse 1.4s ease-in-out infinite alternate;
+    background: rgba(247, 37, 133, 0.18);
+}
+
+@keyframes wake-pulse {
+    from { box-shadow: 0 0 8px rgba(247, 37, 133, 0.2); }
+    to   { box-shadow: 0 0 20px rgba(247, 37, 133, 0.7); }
+}
+
+.icon-btn.active-wake {
+    border-color: rgba(247, 37, 133, 0.4);
+    box-shadow: 0 0 12px rgba(247, 37, 133, 0.25);
+}
+
+
 
 

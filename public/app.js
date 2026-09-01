@@ -10,39 +10,61 @@ document.addEventListener('DOMContentLoaded', () => {
     let allFacts = [];
     let animationId = null;
 
-    // DOM Elements
-    const micBtn = document.getElementById('mic-btn');
-    const micIcon = document.getElementById('mic-icon');
-    const micStatusLabel = document.getElementById('mic-status-label');
-    const canvas = document.getElementById('audio-wave-canvas');
-    const ctx = canvas.getContext('2d');
-    
-    const manualTextInput = document.getElementById('manual-text-input');
-    const sendBtn = document.getElementById('send-btn');
-    const transcriptPlaceholder = document.getElementById('transcript-placeholder');
-    const transcriptText = document.getElementById('transcript-text');
-    const interimText = document.getElementById('interim-text');
+    // Wake Word State
+    let isWakeWordEnabled = true;
+    let customWakeWord = (localStorage.getItem('aashu_wake_word') || 'hey aashu').toLowerCase();
+    let isWakeAwake = false;
 
-    const modeAskBtn = document.getElementById('mode-ask-btn');
+    // DOM Elements
+    const micBtn    = document.getElementById('mic-btn');      // hero mic (welcome state)
+    const micBtnInline = document.getElementById('mic-btn-2'); // inline mic in bar
+    const micIcon   = document.getElementById('mic-icon');
+    const micIcon2  = document.getElementById('mic-icon-2');
+    const micStatusLabel = document.getElementById('mic-status-label');
+    const transcriptBox  = document.getElementById('transcript-box');
+    const canvas    = document.getElementById('audio-wave-canvas');
+    const ctx       = canvas.getContext('2d');
+
+    const toggleWakewordBtn = document.getElementById('toggle-wakeword-btn');
+    const wakewordStatusPill = document.getElementById('wakeword-status-pill');
+    const wakewordLabel = document.getElementById('wakeword-label');
+    const wakewordBtnIcon = document.getElementById('wakeword-btn-icon');
+    const wakewordPillIcon = document.getElementById('wakeword-pill-icon');
+
+    const manualTextInput  = document.getElementById('manual-text-input');
+    const sendBtn          = document.getElementById('send-btn');
+    const transcriptPlaceholder = document.getElementById('transcript-placeholder');
+    const transcriptText   = document.getElementById('transcript-text');
+    const interimText      = document.getElementById('interim-text');
+
+    const modeAskBtn      = document.getElementById('mode-ask-btn');
     const modeRememberBtn = document.getElementById('mode-remember-btn');
 
-    const responseCard = document.getElementById('response-card');
+    const responseCard    = document.getElementById('response-card');
     const responseHeading = document.getElementById('response-heading');
     const responseBodyText = document.getElementById('response-body-text');
     const speakResponseBtn = document.getElementById('speak-response-btn');
     const contextFactsContainer = document.getElementById('context-facts-container');
-    const contextFactsGrid = document.getElementById('context-facts-grid');
+    const contextFactsGrid      = document.getElementById('context-facts-grid');
+    const welcomeState    = document.getElementById('welcome-state');
 
-    const memoryList = document.getElementById('memory-list');
+    const memoryList       = document.getElementById('memory-list');
     const memorySearchInput = document.getElementById('memory-search-input');
-    const factsCountBadge = document.getElementById('facts-count-badge');
+    const factsCountBadge  = document.getElementById('facts-count-badge');
     const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
-    const sidebar = document.getElementById('sidebar');
-    const toggleVoiceBtn = document.getElementById('toggle-voice-btn');
-    const voiceIcon = document.getElementById('voice-icon');
+    const sidebar          = document.getElementById('sidebar');
+    const toggleVoiceBtn   = document.getElementById('toggle-voice-btn');
+    const voiceIcon        = document.getElementById('voice-icon');
 
-    const groqModelName = document.getElementById('groq-model-name');
+    const groqModelName    = document.getElementById('groq-model-name');
     const systemStatusText = document.getElementById('status-text');
+
+    // Auto-grow textarea
+    manualTextInput.addEventListener('input', () => {
+        manualTextInput.style.height = 'auto';
+        manualTextInput.style.height = Math.min(manualTextInput.scrollHeight, 130) + 'px';
+    });
+
 
     // Initialize Canvas Dimensions
     function resizeCanvas() {
@@ -174,37 +196,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
         recognition.onstart = () => {
             isRecording = true;
+            // Both mic buttons go red
             micBtn.classList.add('recording');
+            micBtnInline.classList.add('recording');
             micIcon.className = 'fa-solid fa-stop';
-            micStatusLabel.innerHTML = `<span style="color: var(--accent-pink);"><i class="fa-solid fa-circle text-pink"></i> Listening... Speak clearly now! Auto-submits on pause.</span>`;
-            transcriptPlaceholder.style.display = 'none';
+            micIcon2.className = 'fa-solid fa-stop';
+            // Show transcript strip, show status
+            transcriptBox.style.display = 'flex';
+            micStatusLabel.style.display = 'block';
+            micStatusLabel.innerHTML = `<span style="color:var(--accent-pink);"><i class="fa-solid fa-circle"></i> Listening... pause to auto-send.</span>`;
             startWaveAnimation();
         };
 
         recognition.onresult = (event) => {
             let finalTranscript = '';
             let interimTranscript = '';
-
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
+                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                else interimTranscript += event.results[i][0].transcript;
+            }
+
+            let rawSpeech = (finalTranscript + ' ' + interimTranscript).trim();
+
+            // Wake Word Detection ("Hey Aashu", "Aashu", "Ok Aashu", or custom phrase)
+            if (isWakeWordEnabled && !isWakeAwake) {
+                const lowerText = rawSpeech.toLowerCase();
+                const wakeKeywords = [customWakeWord, 'hey aashu', 'aashu', 'ok aashu', 'hello aashu', 'hey ashu'];
+                const matchedKeyword = wakeKeywords.find(kw => lowerText.includes(kw));
+
+                if (matchedKeyword) {
+                    isWakeAwake = true;
+                    if (wakewordStatusPill) wakewordStatusPill.classList.add('listening-active');
+                    micStatusLabel.style.display = 'block';
+                    micStatusLabel.innerHTML = `<span style="color:var(--accent-pink); font-weight: 600;"><i class="fa-solid fa-bolt"></i> Woke Up! Listening to your prompt...</span>`;
+
+                    // Remove wake phrase from text buffer
+                    const regex = new RegExp(matchedKeyword, 'gi');
+                    rawSpeech = rawSpeech.replace(regex, '').trim();
+                    transcriptText.textContent = '';
                 }
             }
 
-            if (finalTranscript) {
-                transcriptText.textContent += ' ' + finalTranscript;
-            }
+            if (finalTranscript) transcriptText.textContent += ' ' + finalTranscript;
             interimText.textContent = interimTranscript;
             manualTextInput.value = (transcriptText.textContent + ' ' + interimTranscript).trim();
+            // Auto-grow textarea
+            manualTextInput.style.height = 'auto';
+            manualTextInput.style.height = Math.min(manualTextInput.scrollHeight, 130) + 'px';
 
-            // Smart Silence Auto-Submit Timer
+            // Smart silence auto-submit
             if (silenceTimer) clearTimeout(silenceTimer);
             if (isRecording && manualTextInput.value.trim().length > 0) {
                 silenceTimer = setTimeout(() => {
                     if (isRecording && manualTextInput.value.trim().length > 0) {
-                        micStatusLabel.innerHTML = `<span style="color: var(--accent-cyan);"><i class="fa-solid fa-paper-plane text-cyan"></i> Silence detected. Auto-submitting prompt...</span>`;
+                        micStatusLabel.innerHTML = `<span style="color:var(--accent-cyan);"><i class="fa-solid fa-paper-plane"></i> Auto-submitting prompt...</span>`;
                         recognition.stop();
                         stopRecording();
                         submitRequest();
@@ -216,18 +261,17 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.onerror = (event) => {
             console.warn('Speech recognition error:', event.error);
             stopRecording();
-            micStatusLabel.textContent = `Mic Error: ${event.error}. Click mic to retry.`;
+            micStatusLabel.innerHTML = `<span style="color:var(--accent-pink);">Mic error: ${event.error}. Tap mic to retry.</span>`;
+            micStatusLabel.style.display = 'block';
         };
 
-        recognition.onend = () => {
-            if (!silenceTimer) {
-                stopRecording();
-            }
-        };
+        recognition.onend = () => { if (!silenceTimer) stopRecording(); };
+
     } else {
-        micStatusLabel.textContent = 'Web Speech API is not supported in this browser (Use Chrome, Edge, or Safari).';
-        micBtn.disabled = true;
-        micBtn.style.opacity = '0.5';
+        micStatusLabel.textContent = 'Speech not supported. Use Chrome or Edge.';
+        micStatusLabel.style.display = 'block';
+        if (micBtn) { micBtn.disabled = true; micBtn.style.opacity = '0.4'; }
+        if (micBtnInline) { micBtnInline.disabled = true; micBtnInline.style.opacity = '0.4'; }
     }
 
     function toggleRecording() {
@@ -240,24 +284,63 @@ document.addEventListener('DOMContentLoaded', () => {
             transcriptText.textContent = '';
             interimText.textContent = '';
             manualTextInput.value = '';
+            manualTextInput.style.height = 'auto';
             recognition.start();
         }
     }
 
     function stopRecording() {
-        if (silenceTimer) {
-            clearTimeout(silenceTimer);
-            silenceTimer = null;
-        }
+        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
         isRecording = false;
+        isWakeAwake = false;
+        if (wakewordStatusPill) wakewordStatusPill.classList.remove('listening-active');
         micBtn.classList.remove('recording');
+        micBtnInline.classList.remove('recording');
         micIcon.className = 'fa-solid fa-microphone';
-        micStatusLabel.innerHTML = `Click microphone or press <kbd>Space</kbd> to speak...`;
+        micIcon2.className = 'fa-solid fa-microphone';
+        transcriptBox.style.display = 'none';
+        micStatusLabel.style.display = 'none';
     }
 
-    micBtn.addEventListener('click', toggleRecording);
+    if (micBtn) micBtn.addEventListener('click', toggleRecording);
+    if (micBtnInline) micBtnInline.addEventListener('click', toggleRecording);
 
-    // Keyboard Spacebar Shortcut for Mic
+    // Wake Word Toggle & Customization Handlers
+    function updateWakeWordUI() {
+        if (isWakeWordEnabled) {
+            if (wakewordLabel) wakewordLabel.textContent = `Wake: "${customWakeWord}"`;
+            if (toggleWakewordBtn) toggleWakewordBtn.classList.add('active-wake');
+            if (wakewordBtnIcon) wakewordBtnIcon.style.color = 'var(--accent-pink)';
+            if (wakewordPillIcon) wakewordPillIcon.style.color = 'var(--accent-pink)';
+        } else {
+            if (wakewordLabel) wakewordLabel.textContent = `Wake: Off`;
+            if (toggleWakewordBtn) toggleWakewordBtn.classList.remove('active-wake');
+            if (wakewordBtnIcon) wakewordBtnIcon.style.color = 'var(--text-muted)';
+            if (wakewordPillIcon) wakewordPillIcon.style.color = 'var(--text-muted)';
+        }
+    }
+    updateWakeWordUI();
+
+    if (toggleWakewordBtn) {
+        toggleWakewordBtn.addEventListener('click', () => {
+            isWakeWordEnabled = !isWakeWordEnabled;
+            updateWakeWordUI();
+        });
+    }
+
+    if (wakewordStatusPill) {
+        wakewordStatusPill.addEventListener('click', () => {
+            const input = prompt("Enter your custom Wake Word phrase (e.g. 'Hey Aashu' or 'Aashu'):", customWakeWord);
+            if (input && input.trim().length > 0) {
+                customWakeWord = input.trim().toLowerCase();
+                localStorage.setItem('aashu_wake_word', customWakeWord);
+                isWakeWordEnabled = true;
+                updateWakeWordUI();
+            }
+        });
+    }
+
+    // Spacebar shortcut
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && document.activeElement !== manualTextInput && document.activeElement !== memorySearchInput) {
             e.preventDefault();
@@ -265,18 +348,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Text-to-Speech (Voice Output) ---
+    // --- Text-to-Speech ---
     function speakText(text) {
         if (!isVoiceOutputEnabled || !('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel(); // Stop any active speech
-
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
-
         utterance.onstart = () => startWaveAnimation();
-        utterance.onend = () => {};
-
         window.speechSynthesis.speak(utterance);
     }
 
@@ -292,11 +371,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    speakResponseBtn.addEventListener('click', () => {
-        speakText(responseBodyText.textContent);
-    });
+    speakResponseBtn.addEventListener('click', () => speakText(responseBodyText.textContent));
 
-    // --- Mode Selection ---
+    // --- Mode Pills ---
     modeAskBtn.addEventListener('click', () => setMode('ask'));
     modeRememberBtn.addEventListener('click', () => setMode('remember'));
 
@@ -305,114 +382,83 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mode === 'ask') {
             modeAskBtn.classList.add('active');
             modeRememberBtn.classList.remove('active');
-            manualTextInput.placeholder = "Ask anything based on your stored memory... (e.g. 'Where do I live and what are my hobbies?')";
+            manualTextInput.placeholder = "Ask anything based on your stored memory...";
         } else {
             modeRememberBtn.classList.add('active');
             modeAskBtn.classList.remove('active');
-            manualTextInput.placeholder = "Tell me a fact to store in memory... (e.g. 'I moved to Berlin in 2024 and I love drinking espresso.')";
+            manualTextInput.placeholder = "Tell me a fact to store... (e.g. 'I moved to Berlin in 2024')";
         }
     }
 
-    // --- Toggle Sidebar ---
-    toggleSidebarBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-    });
+    // --- Sidebar Toggle ---
+    toggleSidebarBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
 
-    // --- API Handlers ---
-    sendBtn.addEventListener('click', submitRequest);
-    manualTextInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            submitRequest();
-        }
-    });
-
-    // Model Selector Logic
-    const modelSelector = document.getElementById('model-selector');
-    const savedModel = localStorage.getItem('aashu_selected_model');
-    if (savedModel && modelSelector) {
-        modelSelector.value = savedModel;
-    }
-    if (modelSelector) {
-        modelSelector.addEventListener('change', (e) => {
-            localStorage.setItem('aashu_selected_model', e.target.value);
-        });
+    // --- Markdown formatter ---
     function formatMarkdown(text) {
         if (!text) return '';
-        let html = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
+        return text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-            .replace(/^\s*[-•]\s+(.*)$/gmg, '<li class="response-li">$1</li>')
-            .replace(/\n\n/g, '<br><br>')
-            .replace(/\n/g, '<br>');
-        return html;
+            .replace(/^\s*[-•]\s+(.*)$/gm, '<li class="response-li">$1</li>')
+            .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
     }
+
+    // --- Model Selector ---
+    const modelSelector = document.getElementById('model-selector');
+    const savedModel = localStorage.getItem('aashu_selected_model');
+    if (savedModel && modelSelector) modelSelector.value = savedModel;
+    if (modelSelector) modelSelector.addEventListener('change', (e) => localStorage.setItem('aashu_selected_model', e.target.value));
+
+    // --- API Send ---
+    sendBtn.addEventListener('click', submitRequest);
+    manualTextInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitRequest(); }
+    });
 
     async function submitRequest() {
         const text = manualTextInput.value.trim();
         if (!text) return;
 
         const selectedModel = modelSelector ? modelSelector.value : null;
+        if (isRecording) { recognition.stop(); stopRecording(); }
 
-        if (isRecording) {
-            recognition.stop();
-            stopRecording();
-        }
-
+        // Show response card, hide welcome
+        welcomeState.style.display = 'none';
         responseCard.style.display = 'block';
-        responseHeading.textContent = currentMode === 'ask' ? 'AI Answer' : 'Storing Memory Fact...';
+        responseHeading.textContent = currentMode === 'ask' ? 'AI Answer' : 'Storing Memory...';
         responseBodyText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> ${currentMode === 'ask' ? 'Searching vector DB & generating response...' : 'Extracting facts & embedding vector...'}`;
         contextFactsContainer.style.display = 'none';
+        manualTextInput.value = '';
+        manualTextInput.style.height = 'auto';
 
         try {
             if (currentMode === 'remember') {
                 const res = await fetch(`${API_BASE}/api/remember`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text, model: selectedModel })
                 });
                 const data = await res.json();
-
                 if (data.status === 'success') {
-                    responseBodyText.innerHTML = `<i class="fa-solid fa-circle-check text-cyan"></i> <strong>Stored ${data.saved_count} Memory Fact(s) Successfully!</strong><br><br>` +
+                    responseBodyText.innerHTML = `<i class="fa-solid fa-circle-check text-cyan"></i> <strong>Stored ${data.saved_count} Fact(s) Successfully!</strong><br><br>` +
                         data.facts_extracted.map(f => `• <strong>${f.fact}</strong> <em>(${f.category || 'General'})</em>`).join('<br>');
-                    speakText(`Successfully stored ${data.saved_count} memory facts into your local vector database.`);
-                    loadFacts(); // Refresh sidebar facts
+                    speakText(`Stored ${data.saved_count} memory facts.`);
+                    loadFacts();
                 } else {
                     responseBodyText.textContent = `Error: ${data.message}`;
                 }
             } else {
                 // Ask Mode
                 const res = await fetch(`${API_BASE}/api/ask`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: text, model: selectedModel })
                 });
                 const data = await res.json();
 
                 responseBodyText.innerHTML = formatMarkdown(data.answer);
                 speakText(data.answer);
-
-                // Render retrieved context facts cleanly
-                if (data.retrieved_facts && data.retrieved_facts.length > 0) {
-                    contextFactsContainer.style.display = 'block';
-                    contextFactsGrid.innerHTML = data.retrieved_facts.map(f => {
-                        const matchPct = f.score ? Math.round(f.score * 100) : 0;
-                        return `
-                            <div class="context-fact-pill">
-                                <div class="context-fact-header">
-                                    <span class="category-badge"><i class="fa-solid fa-tag"></i> ${f.category || 'General'}</span>
-                                    <span class="score-badge">${matchPct}% match</span>
-                                </div>
-                                <div class="fact-body-text">${f.fact}</div>
-                            </div>
-                        `;
-                    }).join('');
-                }
+                if (contextFactsContainer) contextFactsContainer.style.display = 'none';
             }
         } catch (err) {
             responseBodyText.textContent = `Server Error: ${err.message}`;
