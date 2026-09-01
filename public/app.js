@@ -161,7 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Web Speech Recognition Setup ---
+    // --- Web Speech Recognition Setup with Smart Silence Auto-Submit ---
+    let silenceTimer = null;
+    const SILENCE_THRESHOLD_MS = 1700; // 1.7 seconds gap auto-submits
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
@@ -173,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isRecording = true;
             micBtn.classList.add('recording');
             micIcon.className = 'fa-solid fa-stop';
-            micStatusLabel.innerHTML = `<span style="color: var(--accent-pink);"><i class="fa-solid fa-circle text-pink"></i> Listening... Speak clearly now! Click to Stop.</span>`;
+            micStatusLabel.innerHTML = `<span style="color: var(--accent-pink);"><i class="fa-solid fa-circle text-pink"></i> Listening... Speak clearly now! Auto-submits on pause.</span>`;
             transcriptPlaceholder.style.display = 'none';
             startWaveAnimation();
         };
@@ -192,9 +195,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (finalTranscript) {
                 transcriptText.textContent += ' ' + finalTranscript;
-                manualTextInput.value = (transcriptText.textContent + ' ' + interimTranscript).trim();
             }
             interimText.textContent = interimTranscript;
+            manualTextInput.value = (transcriptText.textContent + ' ' + interimTranscript).trim();
+
+            // Smart Silence Auto-Submit Timer
+            if (silenceTimer) clearTimeout(silenceTimer);
+            if (isRecording && manualTextInput.value.trim().length > 0) {
+                silenceTimer = setTimeout(() => {
+                    if (isRecording && manualTextInput.value.trim().length > 0) {
+                        micStatusLabel.innerHTML = `<span style="color: var(--accent-cyan);"><i class="fa-solid fa-paper-plane text-cyan"></i> Silence detected. Auto-submitting prompt...</span>`;
+                        recognition.stop();
+                        stopRecording();
+                        submitRequest();
+                    }
+                }, SILENCE_THRESHOLD_MS);
+            }
         };
 
         recognition.onerror = (event) => {
@@ -204,7 +220,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         recognition.onend = () => {
-            stopRecording();
+            if (!silenceTimer) {
+                stopRecording();
+            }
         };
     } else {
         micStatusLabel.textContent = 'Web Speech API is not supported in this browser (Use Chrome, Edge, or Safari).';
@@ -218,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             recognition.stop();
             stopRecording();
         } else {
+            if (silenceTimer) clearTimeout(silenceTimer);
             transcriptText.textContent = '';
             interimText.textContent = '';
             manualTextInput.value = '';
@@ -226,6 +245,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function stopRecording() {
+        if (silenceTimer) {
+            clearTimeout(silenceTimer);
+            silenceTimer = null;
+        }
         isRecording = false;
         micBtn.classList.remove('recording');
         micIcon.className = 'fa-solid fa-microphone';
