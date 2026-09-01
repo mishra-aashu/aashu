@@ -53,6 +53,9 @@ jobs:
           cp install.sh dist/
           cp Aashu.desktop dist/
           cp .env.example dist/.env
+          if [ -n "${{ secrets.GROQ_API_KEY }}" ]; then
+            sed -i 's|GROQ_API_KEY=.*|GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}|g' dist/.env
+          fi
           chmod +x dist/start-app.sh dist/install.sh dist/bin/groq-memory-system
 
           cd dist
