@@ -45,8 +45,8 @@
 
         .onboarding-card {
             width: 100%;
-            max-width: 540px;
-            background: rgba(13, 19, 34, 0.85);
+            max-width: 520px;
+            background: rgba(13, 19, 34, 0.88);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 24px;
             padding: 36px 32px;
@@ -64,12 +64,12 @@
         }
 
         .step-dot {
-            width: 38px; height: 38px;
+            width: 32px; height: 32px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: center;
-            font-size: 13px; font-weight: 700;
+            font-size: 12px; font-weight: 700;
             color: var(--text-muted);
             transition: all 0.3s ease;
         }
@@ -91,7 +91,7 @@
             flex: 1;
             height: 2px;
             background: rgba(255, 255, 255, 0.08);
-            margin: 0 8px;
+            margin: 0 4px;
             transition: all 0.3s ease;
         }
 
@@ -103,7 +103,7 @@
             display: none;
             flex-direction: column;
             gap: 20px;
-            animation: fadeInStep 0.3s ease forwards;
+            animation: fadeInStep 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .step-content.active {
@@ -111,7 +111,7 @@
         }
 
         @keyframes fadeInStep {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(12px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
@@ -163,20 +163,20 @@
         }
 
         .input-field-group input, .input-field-group select, .input-field-group textarea {
-            background: rgba(6, 10, 20, 0.7);
+            background: rgba(6, 10, 20, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 13px 16px;
+            border-radius: 14px;
+            padding: 14px 18px;
             color: var(--text-main);
             font-family: inherit;
-            font-size: 14.5px;
+            font-size: 15px;
             outline: none;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
         }
 
         .input-field-group input:focus, .input-field-group select:focus, .input-field-group textarea:focus {
             border-color: var(--accent-cyan);
-            box-shadow: 0 0 16px rgba(0, 242, 254, 0.25);
+            box-shadow: 0 0 18px rgba(0, 242, 254, 0.3);
         }
 
         .chips-grid {
@@ -190,7 +190,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-main);
             border-radius: 20px;
-            padding: 7px 14px;
+            padding: 8px 16px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -223,7 +223,7 @@
             border: 1px solid var(--border-color);
             color: var(--text-muted);
             border-radius: 12px;
-            padding: 10px 20px;
+            padding: 11px 22px;
             font-size: 14px; font-weight: 600;
             cursor: pointer; transition: all 0.2s ease;
             display: flex; align-items: center; gap: 8px;
@@ -239,8 +239,8 @@
             border: none;
             color: #05070e;
             border-radius: 12px;
-            padding: 10px 24px;
-            font-size: 14px; font-weight: 700;
+            padding: 11px 26px;
+            font-size: 14.5px; font-weight: 700;
             font-family: 'Outfit', sans-serif;
             cursor: pointer; transition: all 0.2s ease;
             display: flex; align-items: center; gap: 8px;
@@ -264,7 +264,7 @@
         }
 
         .saving-spinner {
-            font-size: 38px;
+            font-size: 42px;
             color: var(--accent-cyan);
             animation: spin 1.2s linear infinite;
         }
@@ -272,7 +272,7 @@
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .success-icon {
-            font-size: 52px;
+            font-size: 56px;
             color: #10b981;
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
@@ -284,8 +284,8 @@
 
     <div class="onboarding-card">
         
-        <!-- Step Progress Bar -->
-        <div class="step-progress">
+        <!-- Step Progress Bar (6 Steps) -->
+        <div class="step-progress" id="step-progress-bar">
             <div class="step-dot active" id="dot-1">1</div>
             <div class="step-line" id="line-1"></div>
             <div class="step-dot" id="dot-2">2</div>
@@ -293,6 +293,10 @@
             <div class="step-dot" id="dot-3">3</div>
             <div class="step-line" id="line-3"></div>
             <div class="step-dot" id="dot-4">4</div>
+            <div class="step-line" id="line-4"></div>
+            <div class="step-dot" id="dot-5">5</div>
+            <div class="step-line" id="line-5"></div>
+            <div class="step-dot" id="dot-6">6</div>
         </div>
 
         <div class="brand-header">
@@ -300,7 +304,7 @@
             <h1>Aashu AI Setup</h1>
         </div>
 
-        <!-- STEP 1: Name & Identity -->
+        <!-- STEP 1: Name -->
         <div class="step-content active" id="step-1">
             <h2 class="step-title">What should Aashu AI call you?</h2>
             <p class="step-subtitle">Your AI assistant stores your details in local vector memory so every conversation feels personal.</p>
@@ -309,43 +313,55 @@
                 <label for="user-name-input">Your Name or Nickname</label>
                 <input type="text" id="user-name-input" placeholder="e.g. Aashu, Alex, Sarah..." autofocus />
             </div>
+        </div>
+
+        <!-- STEP 2: Profession -->
+        <div class="step-content" id="step-2">
+            <h2 class="step-title">What do you do?</h2>
+            <p class="step-subtitle">Tell Aashu AI your role, field of study, or occupation so it tailors technical depth to your needs.</p>
 
             <div class="input-field-group">
-                <label for="user-role-input">What do you do?</label>
-                <input type="text" id="user-role-input" placeholder="e.g. Full-stack Developer, Designer, Student, Founder..." />
+                <label for="user-role-input">Profession, Role or Study</label>
+                <input type="text" id="user-role-input" placeholder="e.g. Full-stack Developer, Student, Designer, Founder..." />
             </div>
         </div>
 
-        <!-- STEP 2: Location & Lifestyle -->
-        <div class="step-content" id="step-2">
-            <h2 class="step-title">Where are you based & what's your routine?</h2>
-            <p class="step-subtitle">Knowing your context helps Aashu AI tailor responses and reminders to your schedule.</p>
+        <!-- STEP 3: City / Location -->
+        <div class="step-content" id="step-3">
+            <h2 class="step-title">Where are you based?</h2>
+            <p class="step-subtitle">Knowing your city or country helps Aashu AI customize local context, timezones, and region details.</p>
 
             <div class="input-field-group">
                 <label for="user-city-input">City & Country</label>
                 <input type="text" id="user-city-input" placeholder="e.g. Berlin, New Delhi, San Francisco..." />
             </div>
+        </div>
+
+        <!-- STEP 4: Daily Focus -->
+        <div class="step-content" id="step-4">
+            <h2 class="step-title">What is your primary daily focus?</h2>
+            <p class="step-subtitle">What projects, goals, or tasks take up most of your day right now?</p>
 
             <div class="input-field-group">
-                <label for="user-routine-input">Primary Daily Focus</label>
-                <input type="text" id="user-routine-input" placeholder="e.g. Building web apps, studying AI, managing projects..." />
+                <label for="user-routine-input">Primary Daily Focus / Goal</label>
+                <input type="text" id="user-routine-input" placeholder="e.g. Building web apps, preparing for exams, managing team..." />
             </div>
         </div>
 
-        <!-- STEP 3: Hobbies & Favorites -->
-        <div class="step-content" id="step-3">
+        <!-- STEP 5: Interests & Hobbies -->
+        <div class="step-content" id="step-5">
             <h2 class="step-title">What are your interests & hobbies?</h2>
-            <p class="step-subtitle">Select or type topics you care about so Aashu AI understands your passion.</p>
+            <p class="step-subtitle">Select topics you care about so Aashu AI understands your personal passions.</p>
 
             <div class="input-field-group">
                 <label>Select Interest Chips</label>
                 <div class="chips-grid" id="interest-chips">
                     <div class="chip-option" data-val="Coding & Tech"><i class="fa-solid fa-code"></i> Coding & Tech</div>
                     <div class="chip-option" data-val="Artificial Intelligence"><i class="fa-solid fa-robot"></i> AI & ML</div>
-                    <div class="chip-option" data-val="Music & Playing Guitar"><i class="fa-solid fa-music"></i> Music</div>
+                    <div class="chip-option" data-val="Music & Guitar"><i class="fa-solid fa-music"></i> Music</div>
                     <div class="chip-option" data-val="Coffee & Teas"><i class="fa-solid fa-mug-hot"></i> Coffee & Tea</div>
-                    <div class="chip-option" data-val="Fitness & Gaming"><i class="fa-solid fa-gamepad"></i> Gaming & Fitness</div>
-                    <div class="chip-option" data-val="Reading & Books"><i class="fa-solid fa-book"></i> Reading</div>
+                    <div class="chip-option" data-val="Fitness & Sports"><i class="fa-solid fa-dumbbell"></i> Fitness & Sports</div>
+                    <div class="chip-option" data-val="Gaming"><i class="fa-solid fa-gamepad"></i> Gaming</div>
                 </div>
             </div>
 
@@ -355,10 +371,10 @@
             </div>
         </div>
 
-        <!-- STEP 4: AI Communication Tone & Wake Word -->
-        <div class="step-content" id="step-4">
-            <h2 class="step-title">AI Tone & Hands-Free Wake Word</h2>
-            <p class="step-subtitle">Customize how Aashu AI speaks with you and how you activate hands-free mode.</p>
+        <!-- STEP 6: AI Communication Tone & Wake Word -->
+        <div class="step-content" id="step-6">
+            <h2 class="step-title">AI Tone & Hands-Free Activation</h2>
+            <p class="step-subtitle">Final touch! Choose how Aashu AI speaks with you and set your custom wake word phrase.</p>
 
             <div class="input-field-group">
                 <label for="ai-tone-select">Preferred AI Response Tone</label>
@@ -398,7 +414,7 @@
 
     <script>
         let currentStep = 1;
-        const totalSteps = 4;
+        const totalSteps = 6;
 
         // Elements
         const prevBtn = document.getElementById('prev-btn');
@@ -436,7 +452,12 @@
                 }
             }
 
-            document.getElementById(`step-${currentStep}`).classList.add('active');
+            const activeContent = document.getElementById(`step-${currentStep}`);
+            activeContent.classList.add('active');
+            
+            // Focus on input in active step
+            const focusInput = activeContent.querySelector('input, select');
+            if (focusInput) focusInput.focus();
 
             // Button label & back visibility
             prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
@@ -451,6 +472,14 @@
             if (currentStep > 1) {
                 currentStep--;
                 updateStepUI();
+            }
+        });
+
+        // Enter key to move to next step
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && savingOverlay.style.display !== 'flex') {
+                e.preventDefault();
+                nextBtn.click();
             }
         });
 
@@ -473,7 +502,7 @@
         async function finishOnboarding() {
             stepActions.style.display = 'none';
             document.querySelectorAll('.step-content').forEach(s => s.style.display = 'none');
-            document.querySelector('.step-progress').style.display = 'none';
+            document.getElementById('step-progress-bar').style.display = 'none';
             savingOverlay.style.display = 'flex';
 
             const name = document.getElementById('user-name-input').value.trim() || 'User';
