@@ -275,7 +275,50 @@ html, body {
 }
 
 .text-cyan { color: var(--accent-cyan); }
-.text-purple { color: var(--accent-purple); }
+.text-purple { color: var(--accent-purple); } html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #05070e;
+    background-image: 
+        radial-gradient(at 10% 10%, rgba(0, 242, 254, 0.15) 0px, transparent 40%),
+        radial-gradient(at 90% 90%, rgba(247, 37, 133, 0.15) 0px, transparent 40%),
+        radial-gradient(at 50% 50%, rgba(157, 78, 221, 0.12) 0px, transparent 60%);
+    animation: ambient-mesh 14s ease-in-out infinite alternate;
+    color: var(--text-main);
+    font-family: var(--font-body);
+}
+
+@keyframes ambient-mesh {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; filter: hue-rotate(15deg); }
+}
+
+/* Main Container Layout */
+.app-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Sidebar Drawer */
+.memory-sidebar {
+    width: 320px;
+    min-width: 320px;
+    height: 100%;
+    background: rgba(11, 15, 26, 0.9);
+    border-right: 1px solid var(--border-color);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+}
+
+.memory-sidebar.collapsed {
+    margin-left: -320px;
+}
 
 .top-controls {
     display: flex;
@@ -313,6 +356,7 @@ html, body {
     border-radius: 14px;
     padding: 5px;
     gap: 6px;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
 }
 
 .mode-tab {
@@ -326,7 +370,7 @@ html, body {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -334,10 +378,10 @@ html, body {
 }
 
 .mode-tab.active {
-    background: linear-gradient(135deg, rgba(0, 242, 254, 0.22), rgba(79, 172, 254, 0.22));
-    border: 1px solid rgba(0, 242, 254, 0.4);
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.25), rgba(157, 78, 221, 0.25));
+    border: 1px solid rgba(0, 242, 254, 0.5);
     color: #fff;
-    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.2);
+    box-shadow: 0 4px 25px rgba(0, 242, 254, 0.3), inset 0 0 10px rgba(0, 242, 254, 0.2);
 }
 
 /* Hero Mic Visualizer */
@@ -352,8 +396,8 @@ html, body {
 .visualizer-wrapper {
     position: relative;
     width: 100%;
-    max-width: 480px;
-    height: 110px;
+    max-width: 520px;
+    height: 125px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -369,36 +413,67 @@ html, body {
 }
 
 .mic-button {
-    width: 76px;
-    height: 76px;
+    position: relative;
+    width: 82px;
+    height: 82px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+    background: linear-gradient(135deg, #00f2fe, #9d4edd, #f72585);
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease infinite;
     border: none;
     color: #fff;
-    font-size: 26px;
+    font-size: 28px;
     cursor: pointer;
     z-index: 2;
-    box-shadow: 0 0 35px rgba(0, 242, 254, 0.45);
+    box-shadow: 0 0 35px rgba(0, 242, 254, 0.5), 0 0 70px rgba(157, 78, 221, 0.3);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.mic-button::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.5), rgba(247, 37, 133, 0.5));
+    z-index: -1;
+    opacity: 0.7;
+    filter: blur(8px);
+    transition: all 0.3s ease;
+}
+
 .mic-button:hover {
-    transform: scale(1.08);
-    box-shadow: 0 0 50px rgba(0, 242, 254, 0.65);
+    transform: scale(1.1);
+    box-shadow: 0 0 50px rgba(0, 242, 254, 0.75), 0 0 90px rgba(247, 37, 133, 0.5);
 }
 
 .mic-button.recording {
-    background: linear-gradient(135deg, var(--accent-pink), #ff4757);
-    box-shadow: 0 0 50px rgba(247, 37, 133, 0.85);
-    animation: pulse-ring 1.5s infinite;
+    background: linear-gradient(135deg, #f72585, #ff4757, #7209b7);
+    background-size: 200% 200%;
+    box-shadow: 0 0 60px rgba(247, 37, 133, 0.9), 0 0 100px rgba(255, 71, 87, 0.6);
+    animation: pulse-ring 1.2s ease-in-out infinite, gradient-shift 2s linear infinite;
+}
+
+.mic-button.recording::before {
+    animation: aura-expand 1.2s ease-out infinite;
+}
+
+@keyframes aura-expand {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.6); opacity: 0; }
 }
 
 @keyframes pulse-ring {
     0% { transform: scale(1); }
-    50% { transform: scale(1.08); }
+    50% { transform: scale(1.12); }
     100% { transform: scale(1); }
 }
 
@@ -656,4 +731,32 @@ kbd {
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
     }
 }
+
+/* Model Selector Dropdown Styling */
+.model-select-pill {
+    padding: 4px 10px;
+    transition: all 0.2s ease;
+}
+.model-select-pill:hover {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
+}
+.model-select-dropdown {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    padding-right: 4px;
+}
+.model-select-dropdown option {
+    background: #0f1626;
+    color: var(--text-main);
+    padding: 8px;
+    font-size: 13px;
+}
+
 

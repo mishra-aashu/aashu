@@ -101,7 +101,7 @@ async fn remember_handler(
     info!("Processing /remember text: '{}'", req.text);
 
     // 1. Extract facts via Groq LLM
-    let extracted_facts = match state.groq.extract_facts(&req.text).await {
+    let extracted_facts = match state.groq.extract_facts(&req.text, req.model.as_deref()).await {
         Ok(facts) => facts,
         Err(e) => {
             return (
@@ -153,18 +153,25 @@ async fn ask_handler(
     State(state): State<AppState>,
     Json(req): Json<AskRequest>,
 ) -> impl IntoResponse {
+    let chosen_model = req
+        .model
+        .as_ref()
+        .filter(|m| !m.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| state.config.groq_model.clone());
+
     if req.question.trim().is_empty() {
         return (
             StatusCode::BAD_REQUEST,
             Json(AskResponse {
                 answer: "Please provide a non-empty question.".to_string(),
                 retrieved_facts: vec![],
-                model_used: state.config.groq_model.clone(),
+                model_used: chosen_model,
             }),
         );
     }
 
-    info!("Processing /ask question: '{}'", req.question);
+    info!("Processing /ask question with model '{}': '{}'", chosen_model, req.question);
 
     // 1. Embed query locally
     let query_vec = match state.embedder.embed_single(&req.question) {
@@ -175,7 +182,7 @@ async fn ask_handler(
                 Json(AskResponse {
                     answer: format!("Failed to compute query vector: {}", e),
                     retrieved_facts: vec![],
-                    model_used: state.config.groq_model.clone(),
+                    model_used: chosen_model,
                 }),
             );
         }
@@ -191,7 +198,11 @@ async fn ask_handler(
     };
 
     // 3. Ask Groq API with query & context facts
-    let answer = match state.groq.answer_question(&req.question, &relevant_facts).await {
+    let answer = match state
+        .groq
+        .answer_question(&req.question, &relevant_facts, Some(&chosen_model))
+        .await
+    {
         Ok(ans) => ans,
         Err(e) => format!("Failed to generate answer: {}", e),
     };
@@ -201,7 +212,7 @@ async fn ask_handler(
         Json(AskResponse {
             answer,
             retrieved_facts: relevant_facts,
-            model_used: state.config.groq_model.clone(),
+            model_used: chosen_model,
         }),
     )
 }
@@ -241,6 +252,7 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         embedding_model: "bge-small-en-v1.5 (Local CPU)".to_string(),
         llm_model: state.config.groq_model.clone(),
         has_groq_key: state.config.has_valid_groq_key(),
+        db_location: state.config.db_path.clone(),
     };
     Json(response)
 }

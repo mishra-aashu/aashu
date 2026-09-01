@@ -20,11 +20,15 @@ impl GroqClient {
         }
     }
 
-    pub async fn extract_facts(&self, text: &str) -> Result<Vec<FactItem>> {
+    pub async fn extract_facts(&self, text: &str, target_model: Option<&str>) -> Result<Vec<FactItem>> {
         if !self.config.has_valid_groq_key() {
             warn!("GROQ_API_KEY is not configured. Using local fallback fact extractor.");
             return Ok(self.fallback_extract_facts(text));
         }
+
+        let selected_model = target_model
+            .filter(|m| !m.trim().is_empty())
+            .unwrap_or(&self.config.groq_model);
 
         let system_prompt = r#"You are an AI fact extraction system. Extract discrete, clear, atomic facts from user statements.
 Return ONLY a valid JSON array of objects with keys:
@@ -38,7 +42,7 @@ Example Output:
 Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation text."#;
 
         let payload = json!({
-            "model": self.config.groq_model,
+            "model": selected_model,
             "messages": [
                 { "role": "system", "content": system_prompt },
                 { "role": "user", "content": text }
@@ -84,11 +88,20 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         }
     }
 
-    pub async fn answer_question(&self, question: &str, facts: &[FactItem]) -> Result<String> {
+    pub async fn answer_question(
+        &self,
+        question: &str,
+        facts: &[FactItem],
+        target_model: Option<&str>,
+    ) -> Result<String> {
         if !self.config.has_valid_groq_key() {
             warn!("GROQ_API_KEY is not configured. Generating context-backed response locally.");
             return Ok(self.fallback_answer_question(question, facts));
         }
+
+        let selected_model = target_model
+            .filter(|m| !m.trim().is_empty())
+            .unwrap_or(&self.config.groq_model);
 
         let mut context_str = String::new();
         for (i, f) in facts.iter().enumerate() {
@@ -102,12 +115,12 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         }
 
         let system_prompt = format!(
-            "You are an AI personal assistant with access to long-term memory facts retrieved from a local vector database.\n\nRetrieved Memory Context:\n{}\nAnswer the user's question accurately using ONLY the retrieved facts above. Be direct, conversational, and helpful.",
+            "You are Aashu AI, a smart personal assistant with access to long-term memory facts retrieved from a local vector database.\n\nRetrieved Memory Context:\n{}\nAnswer the user's question accurately using ONLY the retrieved facts above. Be direct, conversational, and helpful.",
             if context_str.is_empty() { "No relevant memories found in database." } else { &context_str }
         );
 
         let payload = json!({
-            "model": self.config.groq_model,
+            "model": selected_model,
             "messages": [
                 { "role": "system", "content": system_prompt },
                 { "role": "user", "content": question }
@@ -176,7 +189,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
 
         let fact_list: Vec<String> = facts.iter().map(|f| format!("• {}", f.fact)).collect();
         format!(
-            "Based on your local vector memory, here is what I know about your query:\n\n{}\n\n(Note: Connect your Groq API Key in `.env` for full Llama-3.3-70b AI reasoning output!)",
+            "Based on your local vector memory, here is what I know about your query:\n\n{}\n\n(Note: Add your GROQ_API_KEY in `.env` for AI model reasoning!)",
             fact_list.join("\n")
         )
     }

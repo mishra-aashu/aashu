@@ -49,32 +49,106 @@ document.addEventListener('DOMContentLoaded', () => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // --- Audio Wave Visualizer Animation ---
+    // --- Audio Wave Visualizer Animation (Multi-Layer Gradient & Particle Wave) ---
     let waveStep = 0;
+    const particles = Array.from({ length: 18 }, () => ({
+        x: Math.random() * (canvas.width || 400),
+        speed: 1 + Math.random() * 2,
+        radius: 1.5 + Math.random() * 2,
+        alpha: 0.2 + Math.random() * 0.8
+    }));
+
     function drawWave() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (!isRecording && !speechSynthesis.speaking) {
+        
+        const isAISpeaking = window.speechSynthesis && window.speechSynthesis.speaking;
+        if (!isRecording && !isAISpeaking) {
             waveStep = 0;
+            animationId = null;
             return;
         }
 
-        ctx.beginPath();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = isRecording ? '#f72585' : '#00f2fe';
-
         const height = canvas.height;
         const width = canvas.width;
-        ctx.moveTo(0, height / 2);
+        const centerY = height / 2;
 
-        for (let x = 0; x < width; x += 5) {
-            const freq = isRecording ? 0.03 : 0.02;
-            const amp = isRecording ? 25 : 15;
-            const y = height / 2 + Math.sin(x * freq + waveStep) * amp * Math.sin(x / width * Math.PI);
-            ctx.lineTo(x, y);
+        // Wave settings based on state
+        const isRec = isRecording;
+        const baseAmp = isRec ? 30 : 20;
+        const speed = isRec ? 0.18 : 0.12;
+
+        // --- Layer 1: Background Pink Glow Wave ---
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = isRec ? 'rgba(247, 37, 133, 0.4)' : 'rgba(157, 78, 221, 0.4)';
+        for (let x = 0; x <= width; x += 6) {
+            const envelope = Math.sin((x / width) * Math.PI);
+            const y = centerY + Math.sin(x * 0.025 - waveStep * 1.2) * (baseAmp * 0.8) * envelope;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
-
         ctx.stroke();
-        waveStep += 0.15;
+        ctx.restore();
+
+        // --- Layer 2: Middle Purple Glow Wave ---
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = isRec ? 'rgba(114, 9, 183, 0.65)' : 'rgba(79, 172, 254, 0.65)';
+        for (let x = 0; x <= width; x += 5) {
+            const envelope = Math.sin((x / width) * Math.PI);
+            const y = centerY + Math.cos(x * 0.03 + waveStep * 1.5) * (baseAmp * 1.1) * envelope;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // --- Layer 3: Foreground Neon Main Gradient Wave ---
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = isRec ? '#f72585' : '#00f2fe';
+
+        const grad = ctx.createLinearGradient(0, 0, width, 0);
+        if (isRec) {
+            grad.addColorStop(0, '#7209b7');
+            grad.addColorStop(0.5, '#f72585');
+            grad.addColorStop(1, '#ff4757');
+        } else {
+            grad.addColorStop(0, '#00f2fe');
+            grad.addColorStop(0.5, '#4facfe');
+            grad.addColorStop(1, '#9d4edd');
+        }
+        ctx.strokeStyle = grad;
+
+        for (let x = 0; x <= width; x += 4) {
+            const envelope = Math.sin((x / width) * Math.PI);
+            const y = centerY + Math.sin(x * 0.035 + waveStep * 2) * baseAmp * envelope;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // --- Layer 4: Floating Audio Particles ---
+        ctx.save();
+        particles.forEach(p => {
+            p.x += p.speed;
+            if (p.x > width) p.x = 0;
+
+            const envelope = Math.sin((p.x / width) * Math.PI);
+            const py = centerY + Math.sin(p.x * 0.035 + waveStep * 2) * baseAmp * envelope;
+
+            ctx.beginPath();
+            ctx.arc(p.x, py, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = isRec ? `rgba(247, 37, 133, ${p.alpha})` : `rgba(0, 242, 254, ${p.alpha})`;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = isRec ? '#f72585' : '#00f2fe';
+            ctx.fill();
+        });
+        ctx.restore();
+
+        waveStep += speed;
         animationId = requestAnimationFrame(drawWave);
     }
 
@@ -96,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isRecording = true;
             micBtn.classList.add('recording');
             micIcon.className = 'fa-solid fa-stop';
-            micStatusLabel.innerHTML = `<span style="color: var(--accent-pink);">🔴 Listening... Speak clearly now! Click to Stop.</span>`;
+            micStatusLabel.innerHTML = `<span style="color: var(--accent-pink);"><i class="fa-solid fa-circle text-pink"></i> Listening... Speak clearly now! Click to Stop.</span>`;
             transcriptPlaceholder.style.display = 'none';
             startWaveAnimation();
         };
@@ -227,9 +301,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Model Selector Logic
+    const modelSelector = document.getElementById('model-selector');
+    const savedModel = localStorage.getItem('aashu_selected_model');
+    if (savedModel && modelSelector) {
+        modelSelector.value = savedModel;
+    }
+    if (modelSelector) {
+        modelSelector.addEventListener('change', (e) => {
+            localStorage.setItem('aashu_selected_model', e.target.value);
+        });
+    }
+
     async function submitRequest() {
         const text = manualTextInput.value.trim();
         if (!text) return;
+
+        const selectedModel = modelSelector ? modelSelector.value : null;
 
         if (isRecording) {
             recognition.stop();
@@ -246,12 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/remember', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
+                    body: JSON.stringify({ text, model: selectedModel })
                 });
                 const data = await res.json();
 
                 if (data.status === 'success') {
-                    responseBodyText.innerHTML = `✅ <strong>Stored ${data.saved_count} Memory Fact(s) Successfully!</strong><br><br>` +
+                    responseBodyText.innerHTML = `<i class="fa-solid fa-circle-check text-cyan"></i> <strong>Stored ${data.saved_count} Memory Fact(s) Successfully!</strong><br><br>` +
                         data.facts_extracted.map(f => `• <strong>${f.fact}</strong> <em>(${f.category || 'General'})</em>`).join('<br>');
                     speakText(`Successfully stored ${data.saved_count} memory facts into your local vector database.`);
                     loadFacts(); // Refresh sidebar facts
@@ -263,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: text })
+                    body: JSON.stringify({ question: text, model: selectedModel })
                 });
                 const data = await res.json();
 

@@ -62,9 +62,15 @@
                         <span class="dot green" id="status-dot"></span>
                         <span id="status-text">Backend: Online</span>
                     </div>
-                    <div class="status-pill">
-                        <i class="fa-solid fa-bolt text-cyan"></i>
-                        <span id="groq-model-name">Llama-3.3-70b</span>
+                    <div class="status-pill model-select-pill" title="Select Groq AI Model">
+                        <i class="fa-solid fa-brain text-cyan"></i>
+                        <select id="model-selector" class="model-select-dropdown">
+                            <option value="llama-3.3-70b-versatile">Smart: Llama 3.3 (70B)</option>
+                            <option value="llama-3.1-8b-instant">Fast: Llama 3.1 (8B)</option>
+                            <option value="mixtral-8x7b-32768">Balanced: Mixtral (8x7B)</option>
+                            <option value="deepseek-r1-distill-llama-70b">Reasoning: DeepSeek R1 (70B)</option>
+                            <option value="gemma2-9b-it">Gemma 2 (9B)</option>
+                        </select>
                     </div>
                     <div class="status-pill hide-mobile">
                         <i class="fa-solid fa-shield-halved text-purple"></i>

@@ -15,7 +15,10 @@ echo "🚀 Starting Aashu AI Voice Memory System..."
 if lsof -Pi :${PORT} -sTCP:LISTEN -t >/dev/null ; then
     echo "⚡ Backend server is already running on port ${PORT}."
 else
-    if [ -f "$SCRIPT_DIR/target/release/groq-memory-system" ]; then
+    if [ -f "$SCRIPT_DIR/bin/groq-memory-system" ]; then
+        echo "⚡ Executing pre-compiled release binary (bin/)..."
+        "$SCRIPT_DIR/bin/groq-memory-system" &
+    elif [ -f "$SCRIPT_DIR/target/release/groq-memory-system" ]; then
         echo "⚡ Executing pre-compiled Rust binary..."
         "$SCRIPT_DIR/target/release/groq-memory-system" &
     else

@@ -13,6 +13,7 @@ pub struct FactItem {
 #[derive(Debug, Deserialize)]
 pub struct RememberRequest {
     pub text: String,
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -26,6 +27,7 @@ pub struct RememberResponse {
 #[derive(Debug, Deserialize)]
 pub struct AskRequest {
     pub question: String,
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -48,4 +50,5 @@ pub struct StatusResponse {
     pub embedding_model: String,
     pub llm_model: String,
     pub has_groq_key: bool,
+    pub db_location: String,
 }
