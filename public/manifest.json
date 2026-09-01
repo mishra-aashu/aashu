@@ -1,0 +1,47 @@
+{
+  "name": "Aashu",
+  "short_name": "Aashu",
+  "description": "Aashu AI Voice Assistant with Persistent Local Vector Memory powered by Groq & SQLite",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070a12",
+  "theme_color": "#00f2fe",
+  "categories": ["utilities", "productivity", "ai"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8644/8644467.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8644/8644467.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ask Aashu AI",
+      "short_name": "Ask",
+      "description": "Query your local vector memory store",
+      "url": "/?mode=ask",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Store Memory Fact",
+      "short_name": "Remember",
+      "description": "Store a new fact into memory",
+      "url": "/?mode=remember",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

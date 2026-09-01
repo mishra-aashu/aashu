@@ -1,0 +1,19 @@
+# Environment variables & secrets
+.env
+.env*.local
+.env.production
+
+# Database & local data
+memory.db
+*.db
+*.sqlite
+
+# Rust / Cargo build output
+target/
+**/*.rs.bk
+Cargo.lock
+
+# App Profile & Temporary files
+.chrome-app-profile/
+.DS_Store
+*.log

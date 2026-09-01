@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Aashu AI</title>
+    
+    <!-- PWA & Web App Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <meta name="theme-color" content="#070a12">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Aashu">
+    <meta name="description" content="Aashu AI Voice Assistant with Persistent Local Vector Memory powered by Groq & SQLite">
+
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Offline Alert Banner -->
+    <div class="offline-banner" id="offline-banner" style="display: none;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Offline Mode: Backend disconnected. Vector memories remain cached locally.</span>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar / Memory Drawer -->
+        <aside class="memory-sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <img src="/icon.svg" alt="App Icon" class="brand-logo" width="32" height="32">
+                    <h2>Aashu AI</h2>
+                </div>
+
+                <span class="badge" id="facts-count-badge">0 Facts</span>
+            </div>
+
+            <div class="sidebar-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="memory-search-input" placeholder="Search memories (Ctrl+/)...">
+            </div>
+
+            <div class="memory-list" id="memory-list">
+                <!-- Dynamically populated memory cards -->
+                <div class="loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i> Loading facts...</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Navbar -->
+            <header class="top-nav">
+                <div class="status-pills">
+                    <div class="status-pill" id="system-status">
+                        <span class="dot green" id="status-dot"></span>
+                        <span id="status-text">Backend: Online</span>
+                    </div>
+                    <div class="status-pill">
+                        <i class="fa-solid fa-bolt text-cyan"></i>
+                        <span id="groq-model-name">Llama-3.3-70b</span>
+                    </div>
+                    <div class="status-pill hide-mobile">
+                        <i class="fa-solid fa-shield-halved text-purple"></i>
+                        <span>bge-small-en (CPU)</span>
+                    </div>
+                </div>
+
+                <div class="top-controls">
+                    <!-- PWA Native Install Button -->
+                    <button class="install-btn" id="install-app-btn" style="display: none;" title="Install Voice Memory App on your Device">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Install App</span>
+                    </button>
+
+                    <button class="icon-btn" id="toggle-voice-btn" title="Toggle Speech Output">
+                        <i class="fa-solid fa-volume-high" id="voice-icon"></i>
+                    </button>
+                    <button class="icon-btn" id="toggle-sidebar-btn" title="Toggle Memory Drawer">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Mode Selector Tabs -->
+            <div class="mode-selector">
+                <button class="mode-tab active" data-mode="ask" id="mode-ask-btn">
+                    <i class="fa-solid fa-comments"></i> Ask AI Memory (/ask)
+                </button>
+                <button class="mode-tab" data-mode="remember" id="mode-remember-btn">
+                    <i class="fa-solid fa-plus-circle"></i> Store New Memory (/remember)
+                </button>
+            </div>
+
+            <!-- Voice Interaction Hero Visualizer -->
+            <section class="voice-hero">
+                <div class="visualizer-wrapper">
+                    <canvas id="audio-wave-canvas" width="600" height="120"></canvas>
+                    <button class="mic-button" id="mic-btn" title="Click or Press Space to Speak">
+                        <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                    </button>
+                </div>
+                <div class="mic-status-label" id="mic-status-label">
+                    Click microphone or press <kbd>Space</kbd> to speak naturally...
+                </div>
+            </section>
+
+            <!-- Live Speech Recognition / Text Input Box -->
+            <section class="input-card glass-panel">
+                <div class="live-transcript-box" id="transcript-box">
+                    <span class="transcript-placeholder" id="transcript-placeholder">
+                        <i class="fa-solid fa-wave-square"></i> Live voice speech recognition transcript will appear here in real-time...
+                    </span>
+                    <span id="transcript-text" class="transcript-text"></span>
+                    <span id="interim-text" class="interim-text"></span>
+                </div>
+
+                <div class="input-form">
+                    <textarea id="manual-text-input" rows="2" placeholder="Or type your request here... (Press Enter to send, Shift+Enter for newline)"></textarea>
+                    <button class="send-btn" id="send-btn">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Output / Response Display -->
+            <section class="response-card glass-panel" id="response-card" style="display: none;">
+                <div class="response-header">
+                    <div class="response-title">
+                        <i class="fa-solid fa-sparkles text-cyan"></i>
+                        <h3 id="response-heading">AI Memory Response</h3>
+                    </div>
+                    <button class="icon-btn-sm" id="speak-response-btn" title="Replay Voice Speech">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                </div>
+
+                <div class="response-body" id="response-body-text">
+                    <!-- AI Answer typed here -->
+                </div>
+
+                <!-- Context Facts Pill Container -->
+                <div class="context-facts-container" id="context-facts-container" style="display: none;">
+                    <h4><i class="fa-solid fa-database"></i> Facts Retrieved From Local Vector DB:</h4>
+                    <div class="context-facts-grid" id="context-facts-grid">
+                        <!-- Fact cards loaded here -->
+                    </div>
+                </div>
+            </section>
+
+            <footer class="app-footer">
+                <span>Shortcuts: <kbd>Space</kbd> Mic | <kbd>Enter</kbd> Send | <kbd>Ctrl</kbd>+<kbd>/</kbd> Search | <kbd>Esc</kbd> Sidebar</span>
+            </footer>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
