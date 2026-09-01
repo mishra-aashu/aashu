@@ -115,7 +115,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         }
 
         let system_prompt = format!(
-            "You are Aashu AI, an intelligent personal AI assistant equipped with long-term vector memory.\n\nRetrieved Memory Context:\n{}\n\nInstruction:\n1. Use the retrieved memory facts above as your primary memory to answer the user's question directly, accurately, and naturally.\n2. Synthesize all relevant facts gracefully. If the retrieved facts contain details about the user's location, preferences, or history, state them clearly.\n3. Keep your tone warm, concise, and helpful. Do not mention system details like 'vector database' unless asked.",
+            "You are Aashu AI, an intelligent personal AI assistant equipped with long-term vector memory.\n\nRetrieved Memory Context:\n{}\n\nInstruction:\n1. Use the retrieved memory facts above as your primary memory to answer the user's question directly, accurately, and naturally.\n2. Synthesize all relevant facts gracefully. If the retrieved facts contain details about the user's location, preferences, or history, state them clearly.\n3. Keep your tone warm, concise, and helpful. Do not mention system details like 'vector database' unless asked.\n4. Language Fluency: Automatically detect the user's language. If the user asks in Hindi (Hindi script or Hinglish), respond in fluent, natural Hindi/Hinglish.",
             if context_str.is_empty() { "No relevant memories found in vector store." } else { &context_str }
         );
 

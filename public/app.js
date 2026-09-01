@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        recognition.lang = 'hi-IN';
 
         recognition.onstart = () => {
             isRecording = true;
@@ -413,11 +413,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Text-to-Speech ---
+    // Language Mode Toggle State ('auto', 'hi-IN', 'en-US')
+    let currentLangMode = localStorage.getItem('aashu_lang_mode') || 'auto';
+    const langPill = document.getElementById('lang-pill');
+    const langLabel = document.getElementById('lang-label');
+
+    function updateLangUI() {
+        if (!langLabel) return;
+        if (currentLangMode === 'auto') {
+            langLabel.textContent = 'Auto (HI / EN)';
+        } else if (currentLangMode === 'hi-IN') {
+            langLabel.textContent = 'Hindi (हिंदी)';
+        } else {
+            langLabel.textContent = 'English (US)';
+        }
+        if (recognition) {
+            recognition.lang = (currentLangMode === 'en-US') ? 'en-US' : 'hi-IN';
+        }
+    }
+    updateLangUI();
+
+    if (langPill) {
+        langPill.addEventListener('click', () => {
+            if (currentLangMode === 'auto') currentLangMode = 'hi-IN';
+            else if (currentLangMode === 'hi-IN') currentLangMode = 'en-US';
+            else currentLangMode = 'auto';
+            localStorage.setItem('aashu_lang_mode', currentLangMode);
+            updateLangUI();
+        });
+    }
+
+    // --- Dual Language Text-to-Speech ---
     function speakText(text) {
         if (!isVoiceOutputEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
+
+        // Clean markdown formatting symbols
+        const cleanText = text.replace(/[*#`_~]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+
+        // Check for Devanagari Hindi characters
+        const containsHindiScript = /[\u0900-\u097F]/.test(cleanText);
+        const isHindiMode = (currentLangMode === 'hi-IN') || (currentLangMode === 'auto' && containsHindiScript);
+
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            if (isHindiMode) {
+                const hiVoice = voices.find(v => v.lang.toLowerCase().includes('hi') || v.name.toLowerCase().includes('hindi'));
+                if (hiVoice) utterance.voice = hiVoice;
+                utterance.lang = 'hi-IN';
+            } else {
+                const enVoice = voices.find(v => v.lang.toLowerCase().includes('en-in') || v.lang.toLowerCase().includes('en-us') || v.name.toLowerCase().includes('english'));
+                if (enVoice) utterance.voice = enVoice;
+                utterance.lang = 'en-US';
+            }
+        } else {
+            utterance.lang = isHindiMode ? 'hi-IN' : 'en-US';
+        }
+
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
         utterance.onstart = () => startWaveAnimation();
