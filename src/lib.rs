@@ -8,7 +8,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post, put},
     Json, Router,
 };
 use std::net::SocketAddr;
@@ -23,8 +23,8 @@ use db::Database;
 use embeddings::EmbeddingEngine;
 use groq::GroqClient;
 use models::{
-    AskRequest, AskResponse, FactsListResponse, HasPasswordResponse, PasswordRequest,
-    PasswordResponse, RememberRequest, RememberResponse, StatusResponse,
+    AskRequest, AskResponse, FactItem, FactsListResponse, HasPasswordResponse, PasswordRequest,
+    PasswordResponse, RememberRequest, RememberResponse, StatusResponse, UpdateFactRequest,
 };
 
 #[derive(Clone)]
@@ -33,6 +33,17 @@ pub struct AppState {
     pub embedder: Arc<EmbeddingEngine>,
     pub groq: GroqClient,
     pub config: Config,
+}
+
+impl AppState {
+    pub fn get_effective_groq_key(&self) -> String {
+        if let Ok(Some(key)) = self.db.get_setting("groq_api_key") {
+            if !key.trim().is_empty() {
+                return key.trim().to_string();
+            }
+        }
+        self.config.groq_api_key.clone()
+    }
 }
 
 pub fn hash_password(password: &str) -> String {
@@ -123,11 +134,16 @@ pub async fn start_server() -> anyhow::Result<()> {
         .route("/remember", post(remember_handler))
         .route("/ask", post(ask_handler))
         .route("/facts", get(get_facts_handler))
+        .route("/facts/summary", get(summarize_facts_handler))
         .route("/facts/:id", delete(delete_fact_handler))
+        .route("/facts/:id", put(update_fact_handler))
+        .route("/facts/:id/pin", patch(toggle_pin_fact_handler))
         .route("/status", get(status_handler))
         .route("/set-password", post(set_password_handler))
         .route("/verify-password", post(verify_password_handler))
         .route("/has-password", get(has_password_handler))
+        .route("/settings/groq-key", post(save_groq_key_handler))
+        .route("/settings/groq-key", get(get_groq_key_status_handler))
         .route("/reset-data", post(reset_data_handler));
 
     let app = Router::new()
@@ -174,8 +190,10 @@ async fn remember_handler(
 
     info!("Processing /remember text: '{}'", req.text);
 
+    let effective_key = state.get_effective_groq_key();
+
     // 1. Extract facts via Groq LLM
-    let extracted_facts = match state.groq.extract_facts(&req.text, req.model.as_deref()).await {
+    let extracted_facts = match state.groq.extract_facts(&req.text, req.model.as_deref(), Some(&effective_key)).await {
         Ok(facts) => facts,
         Err(e) => {
             return (
@@ -277,9 +295,10 @@ async fn ask_handler(
     };
 
     // 3. Ask Groq API with query, context facts & chat history
+    let effective_key = state.get_effective_groq_key();
     let answer = match state
         .groq
-        .answer_question(&req.question, &relevant_facts, Some(&chosen_model), req.history.as_deref())
+        .answer_question(&req.question, &relevant_facts, Some(&chosen_model), req.history.as_deref(), Some(&effective_key))
         .await
     {
         Ok(ans) => ans,
@@ -319,6 +338,64 @@ async fn get_facts_handler(
     }
 }
 
+async fn summarize_facts_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if let Err(auth_err) = check_authorization(&state, &headers) {
+        return auth_err.into_response();
+    }
+
+    let facts = match state.db.get_all_facts() {
+        Ok(f) => f,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "status": "error",
+                    "summary": format!("Failed to load facts: {}", e)
+                })),
+            ).into_response();
+        }
+    };
+
+    if facts.is_empty() {
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "success",
+                "summary": "I don't have any stored memories about you yet. Try telling me something like 'Remember that I live in Pune and work as a software engineer'!"
+            })),
+        ).into_response();
+    }
+
+    let effective_key = state.get_effective_groq_key();
+    let prompt = "Summarize everything you know about the user based strictly on these memories into a friendly, structured persona summary with bullet points:";
+    let summary = match state
+        .groq
+        .answer_question(prompt, &facts, None, None, Some(&effective_key))
+        .await
+    {
+        Ok(ans) => ans,
+        Err(_) => {
+            let mut fallback = String::from("Here is a summary of what I know about you:\n\n");
+            for f in &facts {
+                fallback.push_str(&format!("• {} (Category: {})\n", f.fact, f.category.as_deref().unwrap_or("General")));
+            }
+            fallback
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "status": "success",
+            "summary": summary,
+            "total_facts": facts.len()
+        })),
+    ).into_response()
+}
+
 async fn delete_fact_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -335,17 +412,180 @@ async fn delete_fact_handler(
     }
 }
 
+async fn update_fact_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(req): Json<UpdateFactRequest>,
+) -> impl IntoResponse {
+    if let Err(auth_err) = check_authorization(&state, &headers) {
+        return auth_err.into_response();
+    }
+
+    if req.fact.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": "Fact text cannot be empty."
+            })),
+        ).into_response();
+    }
+
+    let embedding = match state.embedder.embed_single(&req.fact) {
+        Ok(v) => v,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "status": "error",
+                    "message": format!("Failed to compute vector embedding: {}", e)
+                })),
+            ).into_response();
+        }
+    };
+
+    let updated_item = FactItem {
+        id: Some(id),
+        fact: req.fact,
+        category: req.category,
+        date: req.date,
+        is_pinned: req.is_pinned,
+        score: None,
+    };
+
+    match state.db.update_fact(id, &updated_item, &embedding) {
+        Ok(true) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "success",
+                "message": "Fact updated and re-embedded successfully."
+            })),
+        ).into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": "Fact ID not found."
+            })),
+        ).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": e.to_string()
+            })),
+        ).into_response(),
+    }
+}
+
+async fn toggle_pin_fact_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> impl IntoResponse {
+    if let Err(auth_err) = check_authorization(&state, &headers) {
+        return auth_err.into_response();
+    }
+
+    match state.db.toggle_pin_fact(id) {
+        Ok(true) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "success",
+                "message": "Fact pin status toggled."
+            })),
+        ).into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": "Fact ID not found."
+            })),
+        ).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": e.to_string()
+            })),
+        ).into_response(),
+    }
+}
+
 async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
     let memory_count = state.db.get_facts_count().unwrap_or(0);
+    let effective_key = state.get_effective_groq_key();
+    let has_key = !effective_key.trim().is_empty() && !effective_key.contains("YOUR_GROQ_API_KEY");
+
     let response = StatusResponse {
         status: "online".to_string(),
         memory_count,
-        embedding_model: "bge-small-en-v1.5 (Local CPU)".to_string(),
+        embedding_model: "Synonym-Aware 384-Dim (Local CPU)".to_string(),
         llm_model: state.config.groq_model.clone(),
-        has_groq_key: state.config.has_valid_groq_key(),
+        has_groq_key: has_key,
         db_location: state.config.db_path.clone(),
     };
     Json(response)
+}
+
+#[derive(serde::Deserialize)]
+struct SaveGroqKeyRequest {
+    api_key: String,
+}
+
+async fn save_groq_key_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<SaveGroqKeyRequest>,
+) -> impl IntoResponse {
+    if let Err(auth_err) = check_authorization(&state, &headers) {
+        return auth_err.into_response();
+    }
+
+    match state.db.set_setting("groq_api_key", req.api_key.trim()) {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "success",
+                "message": "Groq API Key updated successfully."
+            })),
+        ).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": e.to_string()
+            })),
+        ).into_response(),
+    }
+}
+
+async fn get_groq_key_status_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if let Err(auth_err) = check_authorization(&state, &headers) {
+        return auth_err.into_response();
+    }
+
+    let key = state.get_effective_groq_key();
+    let is_configured = !key.trim().is_empty() && !key.contains("YOUR_GROQ_API_KEY");
+    let masked_key = if is_configured && key.len() > 8 {
+        format!("{}...{}", &key[..4], &key[key.len() - 4..])
+    } else if is_configured {
+        "Configured".to_string()
+    } else {
+        "Not Set".to_string()
+    };
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "is_configured": is_configured,
+            "masked_key": masked_key
+        })),
+    ).into_response()
 }
 
 async fn set_password_handler(

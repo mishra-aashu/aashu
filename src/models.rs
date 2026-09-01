@@ -6,8 +6,17 @@ pub struct FactItem {
     pub fact: String,
     pub category: Option<String>,
     pub date: Option<String>,
+    pub is_pinned: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub score: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateFactRequest {
+    pub fact: String,
+    pub category: Option<String>,
+    pub date: Option<String>,
+    pub is_pinned: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

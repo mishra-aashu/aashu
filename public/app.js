@@ -726,6 +726,16 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     }
 
+    window.appendChatMessage = function(role, text, facts, model) {
+        if (welcomeState) welcomeState.style.display = 'none';
+        if (chatStreamContainer) chatStreamContainer.style.display = 'flex';
+        if (role === 'user') {
+            renderUserBubble(text);
+        } else {
+            renderAIBubble(text, facts, model);
+        }
+    };
+
     function renderAIBubble(text, retrievedFacts, modelUsed) {
         const row = document.createElement('div');
         row.className = 'message-bubble-row ai-bubble-row';
@@ -880,6 +890,13 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeState.style.display = 'none';
         chatStreamContainer.style.display = 'flex';
 
+        // Check for Smart Voice Commands & Quick Intent Triggers
+        if (window.VoiceCommands && await window.VoiceCommands.processCommand(text)) {
+            manualTextInput.value = '';
+            manualTextInput.style.height = 'auto';
+            return;
+        }
+
         manualTextInput.value = '';
         manualTextInput.style.height = 'auto';
 
@@ -948,6 +965,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Category Filters State & Handlers ---
+    let activeCategoryFilter = 'all';
+    const categoryFilterBtns = document.querySelectorAll('.cat-filter-btn');
+
+    categoryFilterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            categoryFilterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCategoryFilter = btn.dataset.category;
+            applyMemoryFilters();
+        });
+    });
+
+    function applyMemoryFilters() {
+        const query = memorySearchInput ? memorySearchInput.value.toLowerCase().trim() : '';
+        let filtered = allFacts;
+
+        if (activeCategoryFilter === 'pinned') {
+            filtered = filtered.filter(f => f.is_pinned === true);
+        } else if (activeCategoryFilter !== 'all') {
+            filtered = filtered.filter(f => f.category && f.category.toLowerCase() === activeCategoryFilter.toLowerCase());
+        }
+
+        if (query) {
+            filtered = filtered.filter(f => 
+                f.fact.toLowerCase().includes(query) || 
+                (f.category && f.category.toLowerCase().includes(query))
+            );
+        }
+
+        renderFactsList(filtered);
+    }
+
     // --- Load Memory Facts Sidebar ---
     async function loadFacts() {
         try {
@@ -955,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             allFacts = data.facts || [];
             factsCountBadge.textContent = `${allFacts.length} Facts`;
-            renderFactsList(allFacts);
+            applyMemoryFilters();
         } catch (err) {
             memoryList.innerHTML = `<div style="color: var(--accent-pink); font-size: 12px;">Failed to load facts</div>`;
         }
@@ -967,8 +1017,8 @@ document.addEventListener('DOMContentLoaded', () => {
             memoryList.innerHTML = `
                 <div class="empty-memory-state">
                     <i class="fa-solid fa-box-archive"></i>
-                    <p>No stored memory facts yet.</p>
-                    <span>Use <strong>Remember</strong> mode or speak to store memories.</span>
+                    <p>No stored memory facts found.</p>
+                    <span>Try changing category filter or store new memories.</span>
                 </div>
             `;
             return;
@@ -977,35 +1027,123 @@ document.addEventListener('DOMContentLoaded', () => {
         memoryList.innerHTML = facts.map(f => {
             const hasValidDate = f.date && f.date !== 'N/A' && f.date.trim() !== '';
             const categoryLabel = f.category || 'General';
+            const isPinned = f.is_pinned === true;
+
             return `
-                <div class="fact-card" data-id="${f.id}">
+                <div class="fact-card ${isPinned ? 'pinned' : ''}" data-id="${f.id}">
+                    <div class="fact-actions">
+                        <button class="fact-action-btn pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unstar Fact' : 'Star & Pin Fact'}" onclick="togglePinFact(${f.id})">
+                            <i class="fa-solid fa-star"></i>
+                        </button>
+                        <button class="fact-action-btn edit-btn" title="Edit Fact" onclick="openEditFactModal(${f.id})">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="fact-action-btn delete-btn" title="Delete Fact" onclick="deleteFact(${f.id})">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
                     <div class="fact-meta">
                         <span class="fact-category"><i class="fa-solid fa-tag"></i> ${categoryLabel}</span>
+                        ${isPinned ? '<span class="fact-category text-gold"><i class="fa-solid fa-star"></i> Starred</span>' : ''}
                         ${hasValidDate ? `<span class="fact-date">${f.date}</span>` : ''}
                     </div>
                     <div class="fact-text">${f.fact}</div>
-                    <button class="delete-fact-btn" title="Delete Fact" onclick="deleteFact(${f.id})">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
                 </div>
             `;
         }).join('');
     }
 
+    // --- Edit Fact Modal Handling ---
+    const editFactModal     = document.getElementById('edit-fact-modal');
+    const editFactIdInput   = document.getElementById('edit-fact-id');
+    const editFactTextInput = document.getElementById('edit-fact-text');
+    const editFactCatInput  = document.getElementById('edit-fact-category');
+    const editFactDateInput = document.getElementById('edit-fact-date');
+    const editFactPinnedChk = document.getElementById('edit-fact-pinned');
+    const closeEditFactBtn  = document.getElementById('close-edit-fact-btn');
+    const cancelEditFactBtn = document.getElementById('cancel-edit-fact-btn');
+    const saveEditFactBtn   = document.getElementById('save-edit-fact-btn');
+
+    window.openEditFactModal = function(id) {
+        const factObj = allFacts.find(f => f.id === id);
+        if (!factObj) return;
+
+        editFactIdInput.value = factObj.id;
+        editFactTextInput.value = factObj.fact;
+        editFactCatInput.value = factObj.category || 'General';
+        editFactDateInput.value = factObj.date || 'N/A';
+        editFactPinnedChk.checked = factObj.is_pinned === true;
+
+        if (editFactModal) editFactModal.style.display = 'flex';
+    };
+
+    function closeEditModal() {
+        if (editFactModal) editFactModal.style.display = 'none';
+    }
+
+    if (closeEditFactBtn) closeEditFactBtn.addEventListener('click', closeEditModal);
+    if (cancelEditFactBtn) cancelEditFactBtn.addEventListener('click', closeEditModal);
+
+    if (saveEditFactBtn) {
+        saveEditFactBtn.addEventListener('click', async () => {
+            const id = editFactIdInput.value;
+            const updatedFact = editFactTextInput.value.trim();
+            const category = editFactCatInput.value.trim() || 'General';
+            const date = editFactDateInput.value.trim() || 'N/A';
+            const is_pinned = editFactPinnedChk.checked;
+
+            if (!updatedFact) {
+                alert('Fact text cannot be empty');
+                return;
+            }
+
+            try {
+                saveEditFactBtn.disabled = true;
+                saveEditFactBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+                const res = await fetch(`${API_BASE}/api/facts/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify({ fact: updatedFact, category, date, is_pinned })
+                });
+
+                if (!res.ok) throw new Error('Failed to update fact');
+
+                closeEditModal();
+                await loadFacts();
+            } catch (err) {
+                alert('Error updating memory fact: ' + err.message);
+            } finally {
+                saveEditFactBtn.disabled = false;
+                saveEditFactBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
+            }
+        });
+    }
+
+    window.togglePinFact = async function(id) {
+        try {
+            await fetch(`${API_BASE}/api/facts/${id}/pin`, {
+                method: 'PATCH',
+                headers: { ...getAuthHeaders() }
+            });
+            await loadFacts();
+        } catch (err) {
+            console.error('Failed to toggle pin state:', err);
+        }
+    };
+
     window.deleteFact = async function(id) {
         if (!confirm('Delete this memory fact from local vector store?')) return;
         try {
             await fetch(`${API_BASE}/api/facts/${id}`, { method: 'DELETE', headers: { ...getAuthHeaders() } });
-            loadFacts();
+            await loadFacts();
         } catch (err) {
             alert('Failed to delete fact');
         }
     };
 
-    memorySearchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        const filtered = allFacts.filter(f => f.fact.toLowerCase().includes(query) || (f.category && f.category.toLowerCase().includes(query)));
-        renderFactsList(filtered);
+    memorySearchInput.addEventListener('input', () => {
+        applyMemoryFilters();
     });
 
     // --- System Status Check ---

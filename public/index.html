@@ -21,6 +21,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="settings.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -44,6 +45,15 @@
             <div class="sidebar-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="memory-search-input" placeholder="Search memories (Ctrl+/)...">
+            </div>
+
+            <!-- Category Filters -->
+            <div class="sidebar-category-filters" id="category-filters">
+                <button class="cat-filter-btn active" data-category="all">All</button>
+                <button class="cat-filter-btn" data-category="pinned"><i class="fa-solid fa-star text-gold"></i> Starred</button>
+                <button class="cat-filter-btn" data-category="Personal">Personal</button>
+                <button class="cat-filter-btn" data-category="Work">Work</button>
+                <button class="cat-filter-btn" data-category="Preference">Preference</button>
             </div>
 
             <div class="memory-list" id="memory-list">
@@ -129,6 +139,12 @@
                             </button>
 
                             <div class="menu-divider"></div>
+
+                            <!-- Settings & Diagnostics Modal Trigger -->
+                            <button class="menu-action-btn" id="open-settings-menu-item">
+                                <i class="fa-solid fa-gear text-cyan"></i>
+                                <span>Settings & Diagnostics</span>
+                            </button>
 
                             <!-- Reset App Setup -->
                             <button class="menu-action-btn danger" id="reset-app-btn">
@@ -279,6 +295,53 @@
         </div>
     </div>
 
+    <!-- Edit Fact Glassmorphic Modal -->
+    <div class="modal-overlay" id="edit-fact-modal" style="display: none;">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square text-cyan"></i> Edit Memory Fact</h3>
+                <button class="icon-btn-sm close-modal-btn" id="close-edit-fact-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-fact-id">
+                <div class="form-group">
+                    <label for="edit-fact-text">Memory Fact Content</label>
+                    <textarea id="edit-fact-text" rows="3" placeholder="Enter memory fact..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-fact-category">Category Tag</label>
+                        <input type="text" id="edit-fact-category" placeholder="e.g. Personal, Work, Preference" list="category-suggestions">
+                        <datalist id="category-suggestions">
+                            <option value="Personal">
+                            <option value="Work">
+                            <option value="Preference">
+                            <option value="Location">
+                            <option value="Tech">
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-fact-date">Date / Context</label>
+                        <input type="text" id="edit-fact-date" placeholder="e.g. 2026-09-01 or N/A">
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="custom-checkbox">
+                        <input type="checkbox" id="edit-fact-pinned">
+                        <span><i class="fa-solid fa-star text-gold"></i> Star & Pin to Top (Favorite)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancel-edit-fact-btn">Cancel</button>
+                <button class="btn-primary" id="save-edit-fact-btn">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Changes</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Lock Screen Modal Overlay -->
     <div id="lock-screen-overlay" class="lock-screen-overlay" style="display: none;">
         <div class="lock-screen-card">
@@ -296,6 +359,149 @@
         </div>
     </div>
 
+    <!-- Settings & Diagnostics Glassmorphic Modal -->
+    <div class="modal-overlay" id="settings-modal" style="display: none;">
+        <div class="modal-card glass-panel settings-modal-card">
+            <div class="settings-header">
+                <h3><i class="fa-solid fa-gear text-cyan"></i> Settings & System Diagnostics</h3>
+                <button class="icon-btn-sm close-modal-btn" id="close-settings-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="settings-tabs">
+                <button class="settings-tab-btn active" data-tab="tab-api-key">
+                    <i class="fa-solid fa-key text-cyan"></i> API Key & Auth
+                </button>
+                <button class="settings-tab-btn" data-tab="tab-voice-tts">
+                    <i class="fa-solid fa-sliders text-pink"></i> Voice & Speech
+                </button>
+                <button class="settings-tab-btn" data-tab="tab-diagnostics">
+                    <i class="fa-solid fa-chart-line text-gold"></i> Diagnostics
+                </button>
+            </div>
+
+            <div class="settings-body">
+                <!-- Tab 1: API Key & Security -->
+                <div class="settings-tab-panel active" id="tab-api-key">
+                    <div class="settings-section-title">
+                        <i class="fa-solid fa-key"></i> Groq Cloud API Key
+                    </div>
+                    <p class="settings-description">
+                        Configure your personal Groq API Key to enable cloud LLM response generation. If left unconfigured, Aashu AI uses its local fallback response engine.
+                    </p>
+                    <div class="form-group">
+                        <label>Current Key Status: <span id="groq-key-status-badge" class="status-badge-orange">Checking...</span></label>
+                        <div class="settings-input-group">
+                            <input type="password" id="groq-api-key-input" placeholder="gsk_..." autocomplete="off">
+                            <button class="btn btn-primary" id="save-groq-key-btn"><i class="fa-solid fa-floppy-disk"></i> Save Key</button>
+                        </div>
+                    </div>
+
+                    <div class="menu-divider" style="margin: 24px 0;"></div>
+
+                    <div class="settings-section-title">
+                        <i class="fa-solid fa-shield-halved"></i> App Security Password / PIN
+                    </div>
+                    <p class="settings-description">
+                        Update your security password used to unlock your private local memory vault.
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="settings-new-pass">New Security Password / PIN</label>
+                            <input type="password" id="settings-new-pass" placeholder="Enter new password...">
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; text-align: right;">
+                        <button class="btn btn-primary" id="change-pass-btn"><i class="fa-solid fa-key"></i> Update Security Lock</button>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Voice & TTS -->
+                <div class="settings-tab-panel" id="tab-voice-tts">
+                    <div class="settings-section-title">
+                        <i class="fa-solid fa-volume-high"></i> Text-to-Speech Output Controls
+                    </div>
+                    <p class="settings-description">
+                        Adjust voice speech synthesis speed rate and pitch for AI spoken responses.
+                    </p>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span class="slider-label"><i class="fa-solid fa-gauge-high text-cyan"></i> Speech Speed Rate</span>
+                            <span class="slider-value-badge" id="tts-rate-val">1.0x</span>
+                        </div>
+                        <input type="range" id="tts-rate-slider" class="settings-range-slider" min="0.7" max="1.6" step="0.1" value="1.0">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span class="slider-label"><i class="fa-solid fa-music text-pink"></i> Speech Pitch</span>
+                            <span class="slider-value-badge" id="tts-pitch-val">1.0x</span>
+                        </div>
+                        <input type="range" id="tts-pitch-slider" class="settings-range-slider" min="0.7" max="1.4" step="0.1" value="1.0">
+                    </div>
+
+                    <div style="margin-top: 16px; text-align: right;">
+                        <button class="btn btn-secondary" id="test-tts-btn"><i class="fa-solid fa-play"></i> Test Spoken Speech</button>
+                    </div>
+                </div>
+
+                <!-- Tab 3: System Diagnostics -->
+                <div class="settings-tab-panel" id="tab-diagnostics">
+                    <div class="settings-section-title">
+                        <i class="fa-solid fa-server"></i> System Health & Vector Database Metrics
+                    </div>
+                    <p class="settings-description">
+                        Live system status, active database path, and local CPU vector embedding metrics.
+                    </p>
+
+                    <div class="diagnostics-grid">
+                        <div class="diag-card">
+                            <div class="diag-icon-box"><i class="fa-solid fa-signal"></i></div>
+                            <div class="diag-info">
+                                <h4>Backend Status</h4>
+                                <p id="diag-status-text">ONLINE</p>
+                            </div>
+                        </div>
+
+                        <div class="diag-card">
+                            <div class="diag-icon-box"><i class="fa-solid fa-database"></i></div>
+                            <div class="diag-info">
+                                <h4>Stored Memories</h4>
+                                <p id="diag-memory-count">0 Facts</p>
+                            </div>
+                        </div>
+
+                        <div class="diag-card">
+                            <div class="diag-icon-box"><i class="fa-solid fa-vector-square"></i></div>
+                            <div class="diag-info">
+                                <h4>Vector Model</h4>
+                                <p id="diag-embedding-model">Synonym-Aware 384-Dim</p>
+                            </div>
+                        </div>
+
+                        <div class="diag-card">
+                            <div class="diag-icon-box"><i class="fa-solid fa-microchip"></i></div>
+                            <div class="diag-info">
+                                <h4>LLM Engine</h4>
+                                <p id="diag-llm-model">Llama 3.3 (70B)</p>
+                            </div>
+                        </div>
+
+                        <div class="diag-card" style="grid-column: 1 / -1;">
+                            <div class="diag-icon-box"><i class="fa-solid fa-folder-tree"></i></div>
+                            <div class="diag-info">
+                                <h4>SQLite File Path</h4>
+                                <p id="diag-db-location">memory.db</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
+    <script src="settings.js"></script>
+    <script src="voiceCommands.js"></script>
 </body>
 </html>

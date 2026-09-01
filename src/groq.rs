@@ -20,8 +20,12 @@ impl GroqClient {
         }
     }
 
-    pub async fn extract_facts(&self, text: &str, target_model: Option<&str>) -> Result<Vec<FactItem>> {
-        if !self.config.has_valid_groq_key() {
+    pub async fn extract_facts(&self, text: &str, target_model: Option<&str>, api_key_override: Option<&str>) -> Result<Vec<FactItem>> {
+        let key = api_key_override
+            .filter(|k| !k.trim().is_empty())
+            .unwrap_or(&self.config.groq_api_key);
+
+        if key.trim().is_empty() || key.contains("YOUR_GROQ_API_KEY") {
             warn!("GROQ_API_KEY is not configured. Using local fallback fact extractor.");
             return Ok(self.fallback_extract_facts(text));
         }
@@ -54,7 +58,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         let response = self
             .client
             .post("https://api.groq.com/openai/v1/chat/completions")
-            .header("Authorization", format!("Bearer {}", self.config.groq_api_key))
+            .header("Authorization", format!("Bearer {}", key))
             .header("Content-Type", "application/json")
             .json(&payload)
             .send()
@@ -94,8 +98,13 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         facts: &[FactItem],
         target_model: Option<&str>,
         history: Option<&[ChatMessage]>,
+        api_key_override: Option<&str>,
     ) -> Result<String> {
-        if !self.config.has_valid_groq_key() {
+        let key = api_key_override
+            .filter(|k| !k.trim().is_empty())
+            .unwrap_or(&self.config.groq_api_key);
+
+        if key.trim().is_empty() || key.contains("YOUR_GROQ_API_KEY") {
             warn!("GROQ_API_KEY is not configured. Generating context-backed response locally.");
             return Ok(self.fallback_answer_question(question, facts));
         }
@@ -145,7 +154,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         let response = self
             .client
             .post("https://api.groq.com/openai/v1/chat/completions")
-            .header("Authorization", format!("Bearer {}", self.config.groq_api_key))
+            .header("Authorization", format!("Bearer {}", key))
             .header("Content-Type", "application/json")
             .json(&payload)
             .send()
@@ -179,6 +188,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
                 fact: text.trim().to_string(),
                 category: Some("General".to_string()),
                 date: Some("N/A".to_string()),
+                is_pinned: Some(false),
                 score: None,
             }];
         }
@@ -190,6 +200,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
                 fact: s.to_string(),
                 category: Some("Extracted Fact".to_string()),
                 date: Some("N/A".to_string()),
+                is_pinned: Some(false),
                 score: None,
             })
             .collect()

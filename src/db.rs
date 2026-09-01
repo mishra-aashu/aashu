@@ -60,10 +60,14 @@ impl Database {
                 category TEXT,
                 date TEXT,
                 embedding BLOB NOT NULL,
+                is_pinned INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
             [],
         )?;
+
+        // Ensure is_pinned column exists for existing SQLite DBs
+        let _ = conn.execute("ALTER TABLE facts ADD COLUMN is_pinned INTEGER DEFAULT 0", []);
 
         // Create settings table schema if not exists
         conn.execute(
@@ -82,14 +86,16 @@ impl Database {
     pub fn insert_fact(&self, fact: &FactItem, embedding: &[f32]) -> Result<i64> {
         let conn = self.conn.lock().unwrap();
         let embedding_bytes = f32_slice_to_bytes(embedding);
+        let pinned_val = if fact.is_pinned.unwrap_or(false) { 1 } else { 0 };
 
         conn.execute(
-            "INSERT INTO facts (fact, category, date, embedding) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO facts (fact, category, date, embedding, is_pinned) VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 fact.fact,
                 fact.category.as_deref().unwrap_or("General"),
                 fact.date.as_deref().unwrap_or("N/A"),
-                embedding_bytes
+                embedding_bytes,
+                pinned_val
             ],
         )?;
 
@@ -102,7 +108,7 @@ impl Database {
         let query_bytes = f32_slice_to_bytes(query_embedding);
 
         let mut stmt = conn.prepare(
-            "SELECT id, fact, category, date, cosine_similarity(?1, embedding) AS score
+            "SELECT id, fact, category, date, is_pinned, cosine_similarity(?1, embedding) AS score
              FROM facts
              ORDER BY score DESC
              LIMIT ?2",
@@ -113,13 +119,15 @@ impl Database {
             let fact: String = row.get(1)?;
             let category: Option<String> = row.get(2)?;
             let date: Option<String> = row.get(3)?;
-            let score: f64 = row.get(4)?;
+            let is_pinned_int: i32 = row.get(4).unwrap_or(0);
+            let score: f64 = row.get(5)?;
 
             Ok(FactItem {
                 id: Some(id),
                 fact,
                 category,
                 date,
+                is_pinned: Some(is_pinned_int == 1),
                 score: Some(score as f32),
             })
         })?;
@@ -134,19 +142,21 @@ impl Database {
 
     pub fn get_all_facts(&self) -> Result<Vec<FactItem>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT id, fact, category, date FROM facts ORDER BY id DESC")?;
+        let mut stmt = conn.prepare("SELECT id, fact, category, date, is_pinned FROM facts ORDER BY is_pinned DESC, id DESC")?;
 
         let rows = stmt.query_map([], |row| {
             let id: i64 = row.get(0)?;
             let fact: String = row.get(1)?;
             let category: Option<String> = row.get(2)?;
             let date: Option<String> = row.get(3)?;
+            let is_pinned_int: i32 = row.get(4).unwrap_or(0);
 
             Ok(FactItem {
                 id: Some(id),
                 fact,
                 category,
                 date,
+                is_pinned: Some(is_pinned_int == 1),
                 score: None,
             })
         })?;
@@ -157,6 +167,35 @@ impl Database {
         }
 
         Ok(facts)
+    }
+
+    pub fn update_fact(&self, id: i64, fact: &FactItem, embedding: &[f32]) -> Result<bool> {
+        let conn = self.conn.lock().unwrap();
+        let embedding_bytes = f32_slice_to_bytes(embedding);
+        let pinned_val = if fact.is_pinned.unwrap_or(false) { 1 } else { 0 };
+
+        let count = conn.execute(
+            "UPDATE facts SET fact = ?1, category = ?2, date = ?3, embedding = ?4, is_pinned = ?5 WHERE id = ?6",
+            params![
+                fact.fact,
+                fact.category.as_deref().unwrap_or("General"),
+                fact.date.as_deref().unwrap_or("N/A"),
+                embedding_bytes,
+                pinned_val,
+                id
+            ],
+        )?;
+
+        Ok(count > 0)
+    }
+
+    pub fn toggle_pin_fact(&self, id: i64) -> Result<bool> {
+        let conn = self.conn.lock().unwrap();
+        let count = conn.execute(
+            "UPDATE facts SET is_pinned = CASE WHEN is_pinned = 1 THEN 0 ELSE 1 END WHERE id = ?1",
+            params![id],
+        )?;
+        Ok(count > 0)
     }
 
     pub fn delete_fact(&self, id: i64) -> Result<bool> {
