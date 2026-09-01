@@ -1,4 +1,4 @@
-name: Build & Release Aashu AI Desktop App
+name: Build & Release Aashu AI Tauri Desktop App
 
 on:
   push:
@@ -12,23 +12,37 @@ permissions:
   contents: write
 
 jobs:
-  build-linux:
-    name: Build Linux Desktop Package
+  build-tauri:
+    name: Build Tauri Linux Package
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install System Dependencies
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install System Dependencies for Tauri / WebKit
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev pkg-config
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Cargo Dependencies
+      - name: Cache Rust & Cargo Dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -37,57 +51,26 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-tauri-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-tauri-
 
-      - name: Build Standalone Rust Binary
-        run: cargo build --release
-
-      - name: Prepare Release Bundle Directory
-        run: |
-          mkdir -p dist/bin
-          cp target/release/groq-memory-system dist/bin/
-          cp -r public dist/
-          cp start-app.sh dist/
-          cp install.sh dist/
-          cp Aashu.desktop dist/
-          cp .env.example dist/.env
-          if [ -n "${{ secrets.GROQ_API_KEY }}" ]; then
-            sed -i 's|GROQ_API_KEY=.*|GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}|g' dist/.env
-          fi
-          chmod +x dist/start-app.sh dist/install.sh dist/bin/groq-memory-system
-
-          cd dist
-          tar -czvf ../aashu-ai-linux-x86_64.tar.gz *
-
-      - name: Install cargo-deb tool
-        run: cargo install cargo-deb
-
-      - name: Build Debian (.deb) Package
-        run: |
-          cargo deb
-          cp target/debian/*.deb aashu-ai-linux_amd64.deb
-
-      - name: Upload Build Artifact (for commits)
-        uses: actions/upload-artifact@v4
-        with:
-          name: aashu-ai-linux-packages
-          path: |
-            aashu-ai-linux-x86_64.tar.gz
-            aashu-ai-linux_amd64.deb
-
-      - name: Create or Update GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            aashu-ai-linux-x86_64.tar.gz
-            aashu-ai-linux_amd64.deb
-          draft: false
-          prerelease: false
-          make_latest: true
-          overwrite: true
-          generate_release_notes: true
+      - name: Build Tauri Desktop Application
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Aashu AI v__VERSION__'
+          releaseBody: 'See the assets below to download Aashu AI for your platform.'
+          releaseDraft: false
+          prerelease: false
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aashu-ai-tauri-linux-packages
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage

@@ -62,19 +62,27 @@ fi
 
 echo "🖥️ Launching Standalone Desktop Application Window..."
 
-# Force Dark Mode GTK Theme and Chrome flags
 export GTK_THEME=Adwaita:dark
 
-FLAGS="--app=${APP_URL} --force-dark-mode --enable-features=WebUIDarkMode,WindowControlsOverlay --user-data-dir=${SCRIPT_DIR}/.app-profile"
-
-if command -v google-chrome &> /dev/null; then
-    GTK_THEME=Adwaita:dark google-chrome ${FLAGS} &
+# Try launching in Tauri Native App first (100% Rust Native Desktop experience)
+if [ -d "${SCRIPT_DIR}/src-tauri" ] && command -v npx &> /dev/null; then
+    echo "✨ Launching Pure Rust Tauri Native Application Window..."
+    npx @tauri-apps/cli dev &
+elif [ -f "${SCRIPT_DIR}/app_gui.py" ] && python3 -c 'import gi; gi.require_version("Gtk","3.0"); gi.require_version("WebKit2","4.1")' 2>/dev/null; then
+    echo "✨ Launching Native GTK WebKit2 Application..."
+    python3 "${SCRIPT_DIR}/app_gui.py" "${APP_URL}" &
+elif command -v google-chrome &> /dev/null; then
+    FLAGS="--app=${APP_URL} --force-dark-mode --enable-features=WebUIDarkMode,WindowControlsOverlay --user-data-dir=${SCRIPT_DIR}/.app-profile"
+    google-chrome ${FLAGS} &
 elif command -v chromium-browser &> /dev/null; then
-    GTK_THEME=Adwaita:dark chromium-browser ${FLAGS} &
+    FLAGS="--app=${APP_URL} --force-dark-mode --enable-features=WebUIDarkMode,WindowControlsOverlay --user-data-dir=${SCRIPT_DIR}/.app-profile"
+    chromium-browser ${FLAGS} &
 elif command -v chromium &> /dev/null; then
-    GTK_THEME=Adwaita:dark chromium ${FLAGS} &
+    FLAGS="--app=${APP_URL} --force-dark-mode --enable-features=WebUIDarkMode,WindowControlsOverlay --user-data-dir=${SCRIPT_DIR}/.app-profile"
+    chromium ${FLAGS} &
 elif command -v brave-browser &> /dev/null; then
-    GTK_THEME=Adwaita:dark brave-browser ${FLAGS} &
+    FLAGS="--app=${APP_URL} --force-dark-mode --enable-features=WebUIDarkMode,WindowControlsOverlay --user-data-dir=${SCRIPT_DIR}/.app-profile"
+    brave-browser ${FLAGS} &
 elif command -v xdg-open &> /dev/null; then
     xdg-open "${APP_URL}"
 else

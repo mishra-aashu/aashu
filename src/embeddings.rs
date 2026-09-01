@@ -13,32 +13,9 @@ impl EmbeddingEngine {
 
     pub fn embed_single(&self, text: &str) -> Result<Vec<f32>> {
         Ok(self.compute_vector(text))
-    }
-
-    pub fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
-        Ok(texts.iter().map(|t| self.compute_vector(t)).collect())
-    }
-
-    fn compute_vector(&self, text: &str) -> Vec<f32> {
-        let mut vec = vec![0.0f32; self.dim];
-        let lower = text.to_lowercase();
-        let tokens: Vec<&str> = lower
-            .split(|c: char| !c.is_alphanumeric())
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if tokens.is_empty() {
-            return vec;
-        }
-
-        // 1. Unigram feature hashing
-        for (i, &word) in tokens.iter().enumerate() {
-            let h = hash_str(word);
-            let idx = (h as usize) % self.dim;
-            let sign = if (h % 2) == 0 { 1.0 } else { -1.0 };
-            let position_decay = 1.0 / ((i as f32) + 1.0).sqrt();
-            vec[idx] += sign * position_decay;
-        }
+        vec[idx] += sign * position_decay;
+    }xczsaxxxsxz;'
+        }00
 
         // 2. Bigram feature hashing for semantic context
         for window in tokens.windows(2) {
