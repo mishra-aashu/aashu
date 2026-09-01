@@ -191,6 +191,13 @@ impl Database {
             Ok(None)
         }
     }
+
+    pub fn reset_all_data(&self) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM facts", [])?;
+        conn.execute("DELETE FROM settings", [])?;
+        Ok(())
+    }
 }
 
 fn f32_slice_to_bytes(slice: &[f32]) -> Vec<u8> {

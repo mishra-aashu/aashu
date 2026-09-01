@@ -7,6 +7,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const userName = localStorage.getItem('aashu_user_name');
     const urlParamsCheck = new URLSearchParams(window.location.search);
     
+    // Reset parameter check
+    if (urlParamsCheck.has('reset')) {
+        fetch(`${API_BASE}/api/reset-data`, { method: 'POST' }).finally(() => {
+            localStorage.clear();
+            window.location.href = 'onboarding.html';
+        });
+        return;
+    }
+
     if (!isOnboarded && !urlParamsCheck.has('skip_onboarding')) {
         window.location.href = 'onboarding.html';
         return;
@@ -92,10 +101,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctx       = canvas.getContext('2d');
 
     const toggleWakewordBtn = document.getElementById('toggle-wakeword-btn');
+    const resetAppBtn       = document.getElementById('reset-app-btn');
     const wakewordStatusPill = document.getElementById('wakeword-status-pill');
     const wakewordLabel = document.getElementById('wakeword-label');
     const wakewordBtnIcon = document.getElementById('wakeword-btn-icon');
     const wakewordPillIcon = document.getElementById('wakeword-pill-icon');
+
+    if (resetAppBtn) {
+        resetAppBtn.addEventListener('click', async () => {
+            if (confirm("Reset all user preferences, memory database, and security password? This will restart the full onboarding experience.")) {
+                try {
+                    await fetch(`${API_BASE}/api/reset-data`, { method: 'POST' });
+                } catch(e) {}
+                localStorage.clear();
+                window.location.href = 'onboarding.html';
+            }
+        });
+    }
 
     const manualTextInput  = document.getElementById('manual-text-input');
     const sendBtn          = document.getElementById('send-btn');

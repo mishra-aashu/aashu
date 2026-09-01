@@ -68,7 +68,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/status", get(status_handler))
         .route("/set-password", post(set_password_handler))
         .route("/verify-password", post(verify_password_handler))
-        .route("/has-password", get(has_password_handler));
+        .route("/has-password", get(has_password_handler))
+        .route("/reset-data", post(reset_data_handler));
 
     let app = Router::new()
         .nest("/api", api_routes)
@@ -347,6 +348,19 @@ async fn has_password_handler(State(state): State<AppState>) -> impl IntoRespons
             Json(HasPasswordResponse {
                 has_password: false,
             }),
+        ),
+    }
+}
+
+async fn reset_data_handler(State(state): State<AppState>) -> impl IntoResponse {
+    match state.db.reset_all_data() {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "success", "message": "All data reset successfully."})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"status": "error", "message": e.to_string()})),
         ),
     }
 }
