@@ -61,17 +61,29 @@ jobs:
           cd dist
           tar -czvf ../aashu-ai-linux-x86_64.tar.gz *
 
+      - name: Install cargo-deb tool
+        run: cargo install cargo-deb
+
+      - name: Build Debian (.deb) Package
+        run: |
+          cargo deb
+          cp target/debian/*.deb aashu-ai-linux_amd64.deb
+
       - name: Upload Build Artifact (for commits)
         uses: actions/upload-artifact@v4
         with:
-          name: aashu-ai-linux-x86_64
-          path: aashu-ai-linux-x86_64.tar.gz
+          name: aashu-ai-linux-packages
+          path: |
+            aashu-ai-linux-x86_64.tar.gz
+            aashu-ai-linux_amd64.deb
 
       - name: Create or Update GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: aashu-ai-linux-x86_64.tar.gz
+          files: |
+            aashu-ai-linux-x86_64.tar.gz
+            aashu-ai-linux_amd64.deb
           draft: false
           prerelease: false
           make_latest: true

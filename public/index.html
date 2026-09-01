@@ -233,6 +233,21 @@
                 </button>
             </div>
         </div>
+    <!-- Lock Screen Modal Overlay -->
+    <div id="lock-screen-overlay" class="lock-screen-overlay" style="display: none;">
+        <div class="lock-screen-card">
+            <div class="lock-icon-circle">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2 id="lock-screen-title">Aashu AI Security Lock</h2>
+            <p id="lock-screen-sub">Enter your security password or PIN to access your personal assistant & private vector database.</p>
+
+            <div class="lock-input-group">
+                <input type="password" id="lock-password-input" placeholder="Enter Password / PIN" autofocus />
+                <button id="unlock-btn" class="unlock-btn"><span>Unlock</span> <i class="fa-solid fa-key"></i></button>
+            </div>
+            <div id="lock-error-msg" class="lock-error-msg" style="display: none;"></div>
+        </div>
     </div>
 
     <script src="app.js"></script>

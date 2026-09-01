@@ -284,7 +284,7 @@
 
     <div class="onboarding-card">
         
-        <!-- Step Progress Bar (6 Steps) -->
+        <!-- Step Progress Bar (7 Steps) -->
         <div class="step-progress" id="step-progress-bar">
             <div class="step-dot active" id="dot-1">1</div>
             <div class="step-line" id="line-1"></div>
@@ -297,6 +297,8 @@
             <div class="step-dot" id="dot-5">5</div>
             <div class="step-line" id="line-5"></div>
             <div class="step-dot" id="dot-6">6</div>
+            <div class="step-line" id="line-6"></div>
+            <div class="step-dot" id="dot-7">7</div>
         </div>
 
         <div class="brand-header">
@@ -379,7 +381,7 @@
         <!-- STEP 6: AI Communication Tone & Wake Word -->
         <div class="step-content" id="step-6">
             <h2 class="step-title">AI Tone & Hands-Free Activation</h2>
-            <p class="step-subtitle">Final touch! Choose how Aashu AI speaks with you and set your custom wake word phrase.</p>
+            <p class="step-subtitle">Choose how Aashu AI speaks with you and set your custom wake word phrase.</p>
 
             <div class="input-field-group">
                 <label for="ai-tone-select">Preferred AI Response Tone</label>
@@ -394,6 +396,24 @@
                 <label for="onboard-wakeword-input">Hands-Free Wake Phrase</label>
                 <input type="text" id="onboard-wakeword-input" value="Hey Aashu" placeholder="e.g. Hey Aashu, Jarvis..." />
             </div>
+        </div>
+
+        <!-- STEP 7: Security Password / PIN -->
+        <div class="step-content" id="step-7">
+            <h2 class="step-title"><i class="fa-solid fa-shield-halved text-cyan"></i> Secure Your Aashu AI</h2>
+            <p class="step-subtitle">Set up a security Password or PIN to lock your assistant and keep your private memory database safe.</p>
+
+            <div class="input-field-group">
+                <label for="app-password-input">Security Password / PIN (Optional)</label>
+                <input type="password" id="app-password-input" placeholder="Enter password (e.g. 1234 or SecretPass)" />
+            </div>
+
+            <div class="input-field-group">
+                <label for="app-password-confirm">Confirm Password / PIN</label>
+                <input type="password" id="app-password-confirm" placeholder="Re-enter your password to confirm" />
+            </div>
+            
+            <p style="font-size:12px; color:var(--text-muted); margin-top: -4px;"><i class="fa-solid fa-lock text-cyan"></i> Leave blank if you don't want password protection.</p>
         </div>
 
         <!-- SAVING / SUCCESS OVERLAY -->
@@ -419,7 +439,7 @@
 
     <script>
         let currentStep = 1;
-        const totalSteps = 6;
+        const totalSteps = 7;
 
         // Elements
         const prevBtn = document.getElementById('prev-btn');
@@ -496,11 +516,20 @@
                 return;
             }
 
+            if (currentStep === 7) {
+                const pwd = document.getElementById('app-password-input').value;
+                const pwdConfirm = document.getElementById('app-password-confirm').value;
+                if (pwd !== pwdConfirm) {
+                    alert("Passwords do not match! Please verify your password entry.");
+                    return;
+                }
+            }
+
             if (currentStep < totalSteps) {
                 currentStep++;
                 updateStepUI();
             } else {
-                // Final Step: Collect all data and post to /api/remember!
+                // Final Step: Collect all data and post to /api/remember & /api/set-password!
                 await finishOnboarding();
             }
         });
@@ -519,6 +548,7 @@
             const customHobbies = document.getElementById('user-hobbies-input').value.trim();
             const tone = document.getElementById('ai-tone-select').value;
             const wakeWord = document.getElementById('onboard-wakeword-input').value.trim() || 'Hey Aashu';
+            const appPassword = document.getElementById('app-password-input').value;
 
             // Selected chips
             const selectedChips = Array.from(document.querySelectorAll('.chip-option.selected'))
@@ -545,15 +575,25 @@
                 : window.location.origin;
 
             try {
-                const res = await fetch(`${API_BASE}/api/remember`, {
+                // Post memories
+                await fetch(`${API_BASE}/api/remember`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: memoryText })
                 });
 
+                // Post password if configured
+                if (appPassword && appPassword.trim()) {
+                    await fetch(`${API_BASE}/api/set-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: appPassword.trim() })
+                    });
+                }
+
                 document.getElementById('status-icon').className = 'fa-solid fa-circle-check success-icon';
                 document.getElementById('saving-heading').textContent = `Welcome, ${nickname}!`;
-                document.getElementById('saving-subtext').textContent = 'Your memories are embedded in local vector database. Connecting to your assistant...';
+                document.getElementById('saving-subtext').textContent = 'Your memories and security password are saved. Connecting...';
 
                 setTimeout(() => {
                     window.location.href = 'index.html';
@@ -562,7 +602,7 @@
             } catch (err) {
                 console.warn("API save error during onboarding:", err);
                 document.getElementById('status-icon').className = 'fa-solid fa-circle-check success-icon';
-                document.getElementById('saving-heading').textContent = `Welcome, ${name}!`;
+                document.getElementById('saving-heading').textContent = `Welcome, ${nickname}!`;
                 document.getElementById('saving-subtext').textContent = 'Redirecting to your personal interface...';
 
                 setTimeout(() => {

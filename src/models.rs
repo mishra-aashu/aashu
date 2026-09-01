@@ -52,3 +52,19 @@ pub struct StatusResponse {
     pub has_groq_key: bool,
     pub db_location: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct PasswordRequest {
+    pub password: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PasswordResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HasPasswordResponse {
+    pub has_password: bool,
+}

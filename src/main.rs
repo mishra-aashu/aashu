@@ -23,8 +23,8 @@ use db::Database;
 use embeddings::EmbeddingEngine;
 use groq::GroqClient;
 use models::{
-    AskRequest, AskResponse, FactsListResponse, RememberRequest, RememberResponse,
-    StatusResponse,
+    AskRequest, AskResponse, FactsListResponse, HasPasswordResponse, PasswordRequest,
+    PasswordResponse, RememberRequest, RememberResponse, StatusResponse,
 };
 
 #[derive(Clone)]
@@ -65,7 +65,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/ask", post(ask_handler))
         .route("/facts", get(get_facts_handler))
         .route("/facts/:id", delete(delete_fact_handler))
-        .route("/status", get(status_handler));
+        .route("/status", get(status_handler))
+        .route("/set-password", post(set_password_handler))
+        .route("/verify-password", post(verify_password_handler))
+        .route("/has-password", get(has_password_handler));
 
     let app = Router::new()
         .nest("/api", api_routes)
@@ -255,4 +258,95 @@ async fn status_handler(State(state): State<AppState>) -> impl IntoResponse {
         db_location: state.config.db_path.clone(),
     };
     Json(response)
+}
+
+async fn set_password_handler(
+    State(state): State<AppState>,
+    Json(req): Json<PasswordRequest>,
+) -> impl IntoResponse {
+    let pwd = req.password.trim();
+    if pwd.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(PasswordResponse {
+                success: false,
+                message: "Password cannot be empty".to_string(),
+            }),
+        );
+    }
+
+    match state.db.set_setting("app_password", pwd) {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(PasswordResponse {
+                success: true,
+                message: "Password configured and stored in database.".to_string(),
+            }),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(PasswordResponse {
+                success: false,
+                message: format!("DB Error: {}", e),
+            }),
+        ),
+    }
+}
+
+async fn verify_password_handler(
+    State(state): State<AppState>,
+    Json(req): Json<PasswordRequest>,
+) -> impl IntoResponse {
+    match state.db.get_setting("app_password") {
+        Ok(Some(stored_pwd)) => {
+            if stored_pwd == req.password.trim() {
+                (
+                    StatusCode::OK,
+                    Json(PasswordResponse {
+                        success: true,
+                        message: "Password verified successfully.".to_string(),
+                    }),
+                )
+            } else {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(PasswordResponse {
+                        success: false,
+                        message: "Incorrect password. Access denied.".to_string(),
+                    }),
+                )
+            }
+        }
+        Ok(None) => (
+            StatusCode::OK,
+            Json(PasswordResponse {
+                success: true,
+                message: "No password configured.".to_string(),
+            }),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(PasswordResponse {
+                success: false,
+                message: format!("DB Error: {}", e),
+            }),
+        ),
+    }
+}
+
+async fn has_password_handler(State(state): State<AppState>) -> impl IntoResponse {
+    match state.db.get_setting("app_password") {
+        Ok(Some(pwd)) => (
+            StatusCode::OK,
+            Json(HasPasswordResponse {
+                has_password: !pwd.trim().is_empty(),
+            }),
+        ),
+        _ => (
+            StatusCode::OK,
+            Json(HasPasswordResponse {
+                has_password: false,
+            }),
+        ),
+    }
 }

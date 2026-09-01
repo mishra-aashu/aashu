@@ -12,6 +12,62 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Check App Lock Security Password
+    async function checkAppLock() {
+        try {
+            const res = await fetch(`${API_BASE}/api/has-password`);
+            const data = await res.json();
+            if (data && data.has_password) {
+                const overlay = document.getElementById('lock-screen-overlay');
+                const lockInput = document.getElementById('lock-password-input');
+                const unlockBtn = document.getElementById('unlock-btn');
+                const errorMsg = document.getElementById('lock-error-msg');
+
+                if (overlay) overlay.style.display = 'flex';
+                if (lockInput) lockInput.focus();
+
+                async function attemptUnlock() {
+                    const pwd = lockInput.value.trim();
+                    if (!pwd) return;
+
+                    try {
+                        const verifyRes = await fetch(`${API_BASE}/api/verify-password`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: pwd })
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (verifyData && verifyData.success) {
+                            if (overlay) overlay.style.display = 'none';
+                        } else {
+                            if (errorMsg) {
+                                errorMsg.style.display = 'block';
+                                errorMsg.textContent = '❌ Incorrect password. Access denied.';
+                            }
+                            if (lockInput) {
+                                lockInput.value = '';
+                                lockInput.focus();
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Unlock error:", e);
+                    }
+                }
+
+                if (unlockBtn) unlockBtn.addEventListener('click', attemptUnlock);
+                if (lockInput) {
+                    lockInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') attemptUnlock();
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn("Failed to check app password status:", err);
+        }
+    }
+
+    checkAppLock();
+
     // State Variables
     let currentMode = 'ask'; // 'ask' or 'remember'
     let isVoiceOutputEnabled = true;

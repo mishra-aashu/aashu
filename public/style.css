@@ -1336,6 +1336,126 @@ kbd {
     box-shadow: 0 0 24px rgba(247, 37, 133, 0.6);
 }
 
+/* Security Lock Screen Overlay */
+.lock-screen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 10, 20, 0.92);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lock-screen-card {
+    background: rgba(18, 18, 30, 0.85);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+    border-radius: 24px;
+    padding: 40px 32px;
+    width: 90%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 242, 254, 0.15);
+    animation: lockCardPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes lockCardPop {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.lock-icon-circle {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(157, 78, 221, 0.2));
+    border: 1px solid rgba(0, 242, 254, 0.4);
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: #00f2fe;
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
+}
+
+#lock-screen-title {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+#lock-screen-sub {
+    font-size: 13.5px;
+    color: #a0a5ba;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.lock-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.lock-input-group input {
+    width: 100%;
+    background: rgba(10, 10, 20, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: #fff;
+    font-size: 15px;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.lock-input-group input:focus {
+    border-color: #00f2fe;
+    box-shadow: 0 0 16px rgba(0, 242, 254, 0.3);
+}
+
+.unlock-btn {
+    background: linear-gradient(135deg, #00f2fe, #4facfe);
+    border: none;
+    border-radius: 12px;
+    padding: 13px 20px;
+    color: #000;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+}
+
+.unlock-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(0, 242, 254, 0.7);
+}
+
+.lock-error-msg {
+    margin-top: 14px;
+    font-size: 13px;
+    color: #ff4d6d;
+    background: rgba(255, 77, 109, 0.12);
+    border: 1px solid rgba(255, 77, 109, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
 
 
 

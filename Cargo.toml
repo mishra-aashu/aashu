@@ -1,7 +1,24 @@
 [package]
 name = "groq-memory-system"
-version = "0.1.0"
+version = "1.4.0"
 edition = "2021"
+authors = ["Aashu <mishra-aashu>"]
+description = "Aashu AI - Hands-Free Voice Assistant with Vector Memory"
+
+[package.metadata.deb]
+name = "aashu-ai"
+maintainer = "Aashu <mishra-aashu>"
+copyright = "2026 Aashu"
+extended-description = "Aashu AI is a hands-free personal assistant with long-term vector memory, custom wake-words, and multi-language support."
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/groq-memory-system", "usr/bin/groq-memory-system", "755"],
+    ["start-app.sh", "usr/bin/aashu-ai", "755"],
+    ["public/*", "usr/share/aashu-ai/public/", "644"],
+    ["Aashu.desktop", "usr/share/applications/aashu-ai.desktop", "644"],
+]
 
 [dependencies]
 axum = "0.7"
