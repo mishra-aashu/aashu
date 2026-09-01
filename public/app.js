@@ -2,6 +2,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dynamic API Base URL fallback if opened via file:// protocol directly
     const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
 
+    // Check Onboarding
+    const isOnboarded = localStorage.getItem('aashu_user_onboarded');
+    const userName = localStorage.getItem('aashu_user_name');
+    const urlParamsCheck = new URLSearchParams(window.location.search);
+    
+    if (!isOnboarded && !urlParamsCheck.has('skip_onboarding')) {
+        window.location.href = 'onboarding.html';
+        return;
+    }
+
     // State Variables
     let currentMode = 'ask'; // 'ask' or 'remember'
     let isVoiceOutputEnabled = true;
@@ -58,6 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const groqModelName    = document.getElementById('groq-model-name');
     const systemStatusText = document.getElementById('status-text');
+
+    const welcomeUserTitle = document.getElementById('welcome-user-title');
+    const welcomeWakeHint  = document.getElementById('welcome-wake-hint');
+    if (welcomeUserTitle) {
+        welcomeUserTitle.textContent = userName ? `Welcome back, ${userName}!` : 'Welcome to Aashu AI';
+    }
+    if (welcomeWakeHint) {
+        welcomeWakeHint.textContent = `"${customWakeWord}"`;
+    }
 
     // Auto-grow textarea
     manualTextInput.addEventListener('input', () => {
@@ -525,23 +544,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderFactsList(facts) {
+        if (!memoryList) return;
         if (facts.length === 0) {
-            memoryList.innerHTML = `<div style="color: var(--text-muted); font-size: 13px; text-align: center; margin-top: 20px;">No stored memory facts yet.<br>Use /remember mode or speak to add some!</div>`;
+            memoryList.innerHTML = `
+                <div class="empty-memory-state">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <p>No stored memory facts yet.</p>
+                    <span>Use <strong>Remember</strong> mode or speak to store memories.</span>
+                </div>
+            `;
             return;
         }
 
-        memoryList.innerHTML = facts.map(f => `
-            <div class="fact-card" data-id="${f.id}">
-                <button class="delete-fact-btn" title="Delete Fact" onclick="deleteFact(${f.id})">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-                <div class="fact-meta">
-                    <span class="fact-category">${f.category || 'General'}</span>
-                    <span class="fact-date">${f.date || ''}</span>
+        memoryList.innerHTML = facts.map(f => {
+            const hasValidDate = f.date && f.date !== 'N/A' && f.date.trim() !== '';
+            const categoryLabel = f.category || 'General';
+            return `
+                <div class="fact-card" data-id="${f.id}">
+                    <div class="fact-meta">
+                        <span class="fact-category"><i class="fa-solid fa-tag"></i> ${categoryLabel}</span>
+                        ${hasValidDate ? `<span class="fact-date">${f.date}</span>` : ''}
+                    </div>
+                    <div class="fact-text">${f.fact}</div>
+                    <button class="delete-fact-btn" title="Delete Fact" onclick="deleteFact(${f.id})">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>
-                <div class="fact-text">${f.fact}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     window.deleteFact = async function(id) {

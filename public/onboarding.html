@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Aashu AI — Personal Setup</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #05070e;
+            --accent-cyan: #00f2fe;
+            --accent-blue: #4facfe;
+            --accent-purple: #9d4edd;
+            --accent-pink: #f72585;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0; padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 15% 15%, rgba(0, 242, 254, 0.18) 0px, transparent 45%),
+                radial-gradient(at 85% 85%, rgba(247, 37, 133, 0.18) 0px, transparent 45%),
+                radial-gradient(at 50% 50%, rgba(157, 78, 221, 0.15) 0px, transparent 60%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .onboarding-card {
+            width: 100%;
+            max-width: 540px;
+            background: rgba(13, 19, 34, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 36px 32px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 242, 254, 0.12);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .step-progress {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .step-dot {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 700;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border-color: var(--accent-cyan);
+            color: #05070e;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        }
+
+        .step-dot.completed {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.08);
+            margin: 0 8px;
+            transition: all 0.3s ease;
+        }
+
+        .step-line.active {
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+        }
+
+        .step-content {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeInStep 0.3s ease forwards;
+        }
+
+        .step-content.active {
+            display: flex;
+        }
+
+        @keyframes fadeInStep {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .brand-header i {
+            font-size: 28px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .step-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .step-subtitle {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .input-field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-field-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-field-group input, .input-field-group select, .input-field-group textarea {
+            background: rgba(6, 10, 20, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 13px 16px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 14.5px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-field-group input:focus, .input-field-group select:focus, .input-field-group textarea:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 16px rgba(0, 242, 254, 0.25);
+        }
+
+        .chips-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-radius: 20px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .chip-option:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            background: rgba(0, 242, 254, 0.1);
+        }
+
+        .chip-option.selected {
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(157, 78, 221, 0.2));
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 12px rgba(0, 242, 254, 0.3);
+        }
+
+        .step-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 28px;
+        }
+
+        .btn-nav {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .btn-nav:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border: none;
+            color: #05070e;
+            border-radius: 12px;
+            padding: 10px 24px;
+            font-size: 14px; font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 0 18px rgba(0, 242, 254, 0.35);
+        }
+
+        .btn-next:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 28px rgba(0, 242, 254, 0.55);
+        }
+
+        /* Success Screen */
+        .saving-overlay {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 16px;
+            padding: 20px 0;
+        }
+
+        .saving-spinner {
+            font-size: 38px;
+            color: var(--accent-cyan);
+            animation: spin 1.2s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .success-icon {
+            font-size: 52px;
+            color: #10b981;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="onboarding-card">
+        
+        <!-- Step Progress Bar -->
+        <div class="step-progress">
+            <div class="step-dot active" id="dot-1">1</div>
+            <div class="step-line" id="line-1"></div>
+            <div class="step-dot" id="dot-2">2</div>
+            <div class="step-line" id="line-2"></div>
+            <div class="step-dot" id="dot-3">3</div>
+            <div class="step-line" id="line-3"></div>
+            <div class="step-dot" id="dot-4">4</div>
+        </div>
+
+        <div class="brand-header">
+            <i class="fa-solid fa-brain"></i>
+            <h1>Aashu AI Setup</h1>
+        </div>
+
+        <!-- STEP 1: Name & Identity -->
+        <div class="step-content active" id="step-1">
+            <h2 class="step-title">What should Aashu AI call you?</h2>
+            <p class="step-subtitle">Your AI assistant stores your details in local vector memory so every conversation feels personal.</p>
+            
+            <div class="input-field-group">
+                <label for="user-name-input">Your Name or Nickname</label>
+                <input type="text" id="user-name-input" placeholder="e.g. Aashu, Alex, Sarah..." autofocus />
+            </div>
+
+            <div class="input-field-group">
+                <label for="user-role-input">What do you do?</label>
+                <input type="text" id="user-role-input" placeholder="e.g. Full-stack Developer, Designer, Student, Founder..." />
+            </div>
+        </div>
+
+        <!-- STEP 2: Location & Lifestyle -->
+        <div class="step-content" id="step-2">
+            <h2 class="step-title">Where are you based & what's your routine?</h2>
+            <p class="step-subtitle">Knowing your context helps Aashu AI tailor responses and reminders to your schedule.</p>
+
+            <div class="input-field-group">
+                <label for="user-city-input">City & Country</label>
+                <input type="text" id="user-city-input" placeholder="e.g. Berlin, New Delhi, San Francisco..." />
+            </div>
+
+            <div class="input-field-group">
+                <label for="user-routine-input">Primary Daily Focus</label>
+                <input type="text" id="user-routine-input" placeholder="e.g. Building web apps, studying AI, managing projects..." />
+            </div>
+        </div>
+
+        <!-- STEP 3: Hobbies & Favorites -->
+        <div class="step-content" id="step-3">
+            <h2 class="step-title">What are your interests & hobbies?</h2>
+            <p class="step-subtitle">Select or type topics you care about so Aashu AI understands your passion.</p>
+
+            <div class="input-field-group">
+                <label>Select Interest Chips</label>
+                <div class="chips-grid" id="interest-chips">
+                    <div class="chip-option" data-val="Coding & Tech"><i class="fa-solid fa-code"></i> Coding & Tech</div>
+                    <div class="chip-option" data-val="Artificial Intelligence"><i class="fa-solid fa-robot"></i> AI & ML</div>
+                    <div class="chip-option" data-val="Music & Playing Guitar"><i class="fa-solid fa-music"></i> Music</div>
+                    <div class="chip-option" data-val="Coffee & Teas"><i class="fa-solid fa-mug-hot"></i> Coffee & Tea</div>
+                    <div class="chip-option" data-val="Fitness & Gaming"><i class="fa-solid fa-gamepad"></i> Gaming & Fitness</div>
+                    <div class="chip-option" data-val="Reading & Books"><i class="fa-solid fa-book"></i> Reading</div>
+                </div>
+            </div>
+
+            <div class="input-field-group">
+                <label for="user-hobbies-input">Other Hobbies / Favorite Things</label>
+                <input type="text" id="user-hobbies-input" placeholder="e.g. Playing acoustic guitar, Iced Cappuccinos..." />
+            </div>
+        </div>
+
+        <!-- STEP 4: AI Communication Tone & Wake Word -->
+        <div class="step-content" id="step-4">
+            <h2 class="step-title">AI Tone & Hands-Free Wake Word</h2>
+            <p class="step-subtitle">Customize how Aashu AI speaks with you and how you activate hands-free mode.</p>
+
+            <div class="input-field-group">
+                <label for="ai-tone-select">Preferred AI Response Tone</label>
+                <select id="ai-tone-select">
+                    <option value="Direct, concise, and smart">Direct, Concise & Smart</option>
+                    <option value="Warm, friendly, and conversational">Warm, Friendly & Conversational</option>
+                    <option value="Technical and highly detailed">Technical Expert & Detailed</option>
+                </select>
+            </div>
+
+            <div class="input-field-group">
+                <label for="onboard-wakeword-input">Hands-Free Wake Phrase</label>
+                <input type="text" id="onboard-wakeword-input" value="Hey Aashu" placeholder="e.g. Hey Aashu, Jarvis..." />
+            </div>
+        </div>
+
+        <!-- SAVING / SUCCESS OVERLAY -->
+        <div class="saving-overlay" id="saving-overlay">
+            <div id="saving-status-box">
+                <i class="fa-solid fa-circle-notch saving-spinner" id="status-icon"></i>
+                <h2 style="font-family:'Outfit',sans-serif; margin-top: 14px;" id="saving-heading">Embedding Memories...</h2>
+                <p style="color:var(--text-muted); font-size: 13.5px; margin-top: 6px;" id="saving-subtext">Storing your personal facts into local Vector Database...</p>
+            </div>
+        </div>
+
+        <!-- Step Action Buttons -->
+        <div class="step-actions" id="step-actions">
+            <button class="btn-nav" id="prev-btn" style="visibility: hidden;">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button class="btn-next" id="next-btn">
+                <span>Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 4;
+
+        // Elements
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const stepActions = document.getElementById('step-actions');
+        const savingOverlay = document.getElementById('saving-overlay');
+
+        // Interest chips select toggle
+        document.querySelectorAll('.chip-option').forEach(chip => {
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('selected');
+            });
+        });
+
+        function updateStepUI() {
+            // Hide all steps
+            for (let i = 1; i <= totalSteps; i++) {
+                document.getElementById(`step-${i}`).classList.remove('active');
+                const dot = document.getElementById(`dot-${i}`);
+                if (i < currentStep) {
+                    dot.className = 'step-dot completed';
+                    dot.innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else if (i === currentStep) {
+                    dot.className = 'step-dot active';
+                    dot.textContent = i;
+                } else {
+                    dot.className = 'step-dot';
+                    dot.textContent = i;
+                }
+
+                if (i < totalSteps) {
+                    const line = document.getElementById(`line-${i}`);
+                    if (i < currentStep) line.classList.add('active');
+                    else line.classList.remove('active');
+                }
+            }
+
+            document.getElementById(`step-${currentStep}`).classList.add('active');
+
+            // Button label & back visibility
+            prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+            if (currentStep === totalSteps) {
+                nextBtn.innerHTML = '<span>Finish & Connect</span> <i class="fa-solid fa-bolt"></i>';
+            } else {
+                nextBtn.innerHTML = '<span>Continue</span> <i class="fa-solid fa-arrow-right"></i>';
+            }
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        });
+
+        nextBtn.addEventListener('click', async () => {
+            const userName = document.getElementById('user-name-input').value.trim();
+            if (currentStep === 1 && !userName) {
+                alert("Please enter your name so Aashu AI knows who you are!");
+                return;
+            }
+
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateStepUI();
+            } else {
+                // Final Step: Collect all data and post to /api/remember!
+                await finishOnboarding();
+            }
+        });
+
+        async function finishOnboarding() {
+            stepActions.style.display = 'none';
+            document.querySelectorAll('.step-content').forEach(s => s.style.display = 'none');
+            document.querySelector('.step-progress').style.display = 'none';
+            savingOverlay.style.display = 'flex';
+
+            const name = document.getElementById('user-name-input').value.trim() || 'User';
+            const role = document.getElementById('user-role-input').value.trim();
+            const city = document.getElementById('user-city-input').value.trim();
+            const routine = document.getElementById('user-routine-input').value.trim();
+            const customHobbies = document.getElementById('user-hobbies-input').value.trim();
+            const tone = document.getElementById('ai-tone-select').value;
+            const wakeWord = document.getElementById('onboard-wakeword-input').value.trim() || 'Hey Aashu';
+
+            // Selected chips
+            const selectedChips = Array.from(document.querySelectorAll('.chip-option.selected'))
+                .map(c => c.dataset.val);
+
+            // Construct onboarding summary text to store into Vector DB
+            let memoryText = `User's name is ${name}. `;
+            if (role) memoryText += `User works as ${role}. `;
+            if (city) memoryText += `User lives in ${city}. `;
+            if (routine) memoryText += `User's daily focus is ${routine}. `;
+            if (selectedChips.length > 0) memoryText += `User's interests include ${selectedChips.join(', ')}. `;
+            if (customHobbies) memoryText += `User's hobbies and preferences: ${customHobbies}. `;
+            memoryText += `User prefers AI tone to be ${tone}.`;
+
+            // Save in localStorage
+            localStorage.setItem('aashu_user_onboarded', 'true');
+            localStorage.setItem('aashu_user_name', name);
+            localStorage.setItem('aashu_wake_word', wakeWord.toLowerCase());
+
+            // API Endpoint
+            const API_BASE = (window.location.protocol === 'file:' || !window.location.port)
+                ? 'http://localhost:3000'
+                : window.location.origin;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/remember`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: memoryText })
+                });
+
+                document.getElementById('status-icon').className = 'fa-solid fa-circle-check success-icon';
+                document.getElementById('saving-heading').textContent = `Welcome, ${name}!`;
+                document.getElementById('saving-subtext').textContent = 'Your memories are embedded in local vector database. Connecting to your assistant...';
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1400);
+
+            } catch (err) {
+                console.warn("API save error during onboarding:", err);
+                document.getElementById('status-icon').className = 'fa-solid fa-circle-check success-icon';
+                document.getElementById('saving-heading').textContent = `Welcome, ${name}!`;
+                document.getElementById('saving-subtext').textContent = 'Redirecting to your personal interface...';
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1400);
+            }
+        }
+    </script>
+</body>
+</html>
