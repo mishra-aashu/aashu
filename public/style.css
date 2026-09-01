@@ -608,22 +608,46 @@ kbd {
 
 .response-body {
     font-size: 15px;
-    line-height: 1.65;
+    line-height: 1.7;
+    color: var(--text-main);
+}
+
+.response-body strong {
+    color: var(--accent-cyan);
+    font-weight: 600;
+}
+
+.inline-code {
+    background: rgba(0, 242, 254, 0.1);
+    border: 1px solid rgba(0, 242, 254, 0.25);
+    color: var(--accent-cyan);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+.response-li {
+    margin-left: 18px;
+    margin-top: 4px;
     color: var(--text-main);
 }
 
 .context-facts-container {
-    margin-top: 18px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 12px;
-    padding: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-top: 20px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 14px;
+    padding: 16px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .context-facts-container h4 {
-    font-size: 13px;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -631,22 +655,62 @@ kbd {
 
 .context-facts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
 }
 
 .context-fact-pill {
-    background: rgba(0, 242, 254, 0.05);
+    background: rgba(15, 23, 42, 0.7);
     border: 1px solid rgba(0, 242, 254, 0.2);
-    border-radius: 10px;
-    padding: 12px;
-    font-size: 12.5px;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.context-fact-pill .score {
-    float: right;
+.context-fact-pill:hover {
+    border-color: rgba(0, 242, 254, 0.45);
+    background: rgba(20, 30, 55, 0.85);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 242, 254, 0.15);
+}
+
+.context-fact-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+}
+
+.category-badge {
+    color: var(--text-muted);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.score-badge {
+    background: rgba(0, 242, 254, 0.15);
+    border: 1px solid rgba(0, 242, 254, 0.35);
     color: var(--accent-cyan);
     font-weight: 700;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.fact-body-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-main);
+    font-weight: 500;
 }
 
 /* PWA Install Button */

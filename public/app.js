@@ -314,6 +314,19 @@ document.addEventListener('DOMContentLoaded', () => {
         modelSelector.addEventListener('change', (e) => {
             localStorage.setItem('aashu_selected_model', e.target.value);
         });
+    function formatMarkdown(text) {
+        if (!text) return '';
+        let html = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
+            .replace(/^\s*[-•]\s+(.*)$/gmg, '<li class="response-li">$1</li>')
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/\n/g, '<br>');
+        return html;
     }
 
     async function submitRequest() {
@@ -358,19 +371,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
 
-                responseBodyText.textContent = data.answer;
+                responseBodyText.innerHTML = formatMarkdown(data.answer);
                 speakText(data.answer);
 
-                // Render retrieved context facts
+                // Render retrieved context facts cleanly
                 if (data.retrieved_facts && data.retrieved_facts.length > 0) {
                     contextFactsContainer.style.display = 'block';
-                    contextFactsGrid.innerHTML = data.retrieved_facts.map(f => `
-                        <div class="context-fact-pill">
-                            <span class="score">${(f.score ? (f.score * 100).toFixed(0) + '%' : '')} match</span>
-                            <strong>${f.fact}</strong>
-                            <div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Category: ${f.category || 'General'}</div>
-                        </div>
-                    `).join('');
+                    contextFactsGrid.innerHTML = data.retrieved_facts.map(f => {
+                        const matchPct = f.score ? Math.round(f.score * 100) : 0;
+                        return `
+                            <div class="context-fact-pill">
+                                <div class="context-fact-header">
+                                    <span class="category-badge"><i class="fa-solid fa-tag"></i> ${f.category || 'General'}</span>
+                                    <span class="score-badge">${matchPct}% match</span>
+                                </div>
+                                <div class="fact-body-text">${f.fact}</div>
+                            </div>
+                        `;
+                    }).join('');
                 }
             }
         } catch (err) {
