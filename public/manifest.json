@@ -6,9 +6,10 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
   "background_color": "#070a12",
-  "theme_color": "#00f2fe",
+  "theme_color": "#070a12",
   "categories": ["utilities", "productivity", "ai"],
   "icons": [
     {

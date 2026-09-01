@@ -41,17 +41,40 @@ else
     echo " Ready!"
 fi
 
+# Kill any stale instance running on the app profile so new flags take effect
+pkill -f "user-data-dir=.*\.app-profile" 2>/dev/null || true
+sleep 0.5
+
+# Ensure Chrome profile uses dark custom window frame
+if [ -f "${SCRIPT_DIR}/.app-profile/Default/Preferences" ]; then
+    python3 -c '
+import json, os
+p = "'"${SCRIPT_DIR}"'/.app-profile/Default/Preferences"
+if os.path.exists(p):
+    try:
+        with open(p, "r") as f: d = json.load(f)
+        d.setdefault("browser", {})["use_custom_chrome_frame"] = True
+        d.setdefault("theme", {})["system_theme"] = 0
+        with open(p, "w") as f: json.dump(d, f)
+    except Exception: pass
+' 2>/dev/null
+fi
+
 echo "🖥️ Launching Standalone Desktop Application Window..."
 
-# Try launching in Chrome/Chromium/Brave App Mode first for native window experience
+# Force Dark Mode GTK Theme and Chrome flags
+export GTK_THEME=Adwaita:dark
+
+FLAGS="--app=${APP_URL} --force-dark-mode --enable-features=WebUIDarkMode,WindowControlsOverlay --user-data-dir=${SCRIPT_DIR}/.app-profile"
+
 if command -v google-chrome &> /dev/null; then
-    google-chrome --app="${APP_URL}" --user-data-dir="${SCRIPT_DIR}/.app-profile" &
+    GTK_THEME=Adwaita:dark google-chrome ${FLAGS} &
 elif command -v chromium-browser &> /dev/null; then
-    chromium-browser --app="${APP_URL}" --user-data-dir="${SCRIPT_DIR}/.app-profile" &
+    GTK_THEME=Adwaita:dark chromium-browser ${FLAGS} &
 elif command -v chromium &> /dev/null; then
-    chromium --app="${APP_URL}" --user-data-dir="${SCRIPT_DIR}/.app-profile" &
+    GTK_THEME=Adwaita:dark chromium ${FLAGS} &
 elif command -v brave-browser &> /dev/null; then
-    brave-browser --app="${APP_URL}" --user-data-dir="${SCRIPT_DIR}/.app-profile" &
+    GTK_THEME=Adwaita:dark brave-browser ${FLAGS} &
 elif command -v xdg-open &> /dev/null; then
     xdg-open "${APP_URL}"
 else
