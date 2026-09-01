@@ -304,14 +304,19 @@
             <h1>Aashu AI Setup</h1>
         </div>
 
-        <!-- STEP 1: Name -->
+        <!-- STEP 1: Name & Nickname -->
         <div class="step-content active" id="step-1">
             <h2 class="step-title">What should Aashu AI call you?</h2>
-            <p class="step-subtitle">Your AI assistant stores your details in local vector memory so every conversation feels personal.</p>
+            <p class="step-subtitle">Please provide your full name and preferred nickname so your AI assistant addresses you properly.</p>
             
             <div class="input-field-group">
-                <label for="user-name-input">Your Name or Nickname</label>
-                <input type="text" id="user-name-input" placeholder="e.g. Aashu, Alex, Sarah..." autofocus />
+                <label for="user-fullname-input">Your Full Name</label>
+                <input type="text" id="user-fullname-input" placeholder="e.g. Aashu Mishra" autofocus />
+            </div>
+
+            <div class="input-field-group">
+                <label for="user-nickname-input">Nickname / Call Name</label>
+                <input type="text" id="user-nickname-input" placeholder="e.g. Aashu" />
             </div>
         </div>
 
@@ -484,9 +489,10 @@
         });
 
         nextBtn.addEventListener('click', async () => {
-            const userName = document.getElementById('user-name-input').value.trim();
-            if (currentStep === 1 && !userName) {
-                alert("Please enter your name so Aashu AI knows who you are!");
+            const fullName = document.getElementById('user-fullname-input').value.trim();
+            const nickname = document.getElementById('user-nickname-input').value.trim();
+            if (currentStep === 1 && !fullName && !nickname) {
+                alert("Please enter your name or nickname so Aashu AI knows who you are!");
                 return;
             }
 
@@ -505,7 +511,8 @@
             document.getElementById('step-progress-bar').style.display = 'none';
             savingOverlay.style.display = 'flex';
 
-            const name = document.getElementById('user-name-input').value.trim() || 'User';
+            const fullName = document.getElementById('user-fullname-input').value.trim();
+            const nickname = document.getElementById('user-nickname-input').value.trim() || fullName || 'User';
             const role = document.getElementById('user-role-input').value.trim();
             const city = document.getElementById('user-city-input').value.trim();
             const routine = document.getElementById('user-routine-input').value.trim();
@@ -518,7 +525,7 @@
                 .map(c => c.dataset.val);
 
             // Construct onboarding summary text to store into Vector DB
-            let memoryText = `User's name is ${name}. `;
+            let memoryText = `User's full name is ${fullName || nickname}. User's nickname/call name is ${nickname}. `;
             if (role) memoryText += `User works as ${role}. `;
             if (city) memoryText += `User lives in ${city}. `;
             if (routine) memoryText += `User's daily focus is ${routine}. `;
@@ -528,7 +535,8 @@
 
             // Save in localStorage
             localStorage.setItem('aashu_user_onboarded', 'true');
-            localStorage.setItem('aashu_user_name', name);
+            localStorage.setItem('aashu_user_name', nickname);
+            if (fullName) localStorage.setItem('aashu_user_fullname', fullName);
             localStorage.setItem('aashu_wake_word', wakeWord.toLowerCase());
 
             // API Endpoint
@@ -544,7 +552,7 @@
                 });
 
                 document.getElementById('status-icon').className = 'fa-solid fa-circle-check success-icon';
-                document.getElementById('saving-heading').textContent = `Welcome, ${name}!`;
+                document.getElementById('saving-heading').textContent = `Welcome, ${nickname}!`;
                 document.getElementById('saving-subtext').textContent = 'Your memories are embedded in local vector database. Connecting to your assistant...';
 
                 setTimeout(() => {
