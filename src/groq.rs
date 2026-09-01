@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use tracing::warn;
 
 use crate::config::Config;
-use crate::models::FactItem;
+use crate::models::{ChatMessage, FactItem};
 
 #[derive(Clone)]
 pub struct GroqClient {
@@ -93,6 +93,7 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         question: &str,
         facts: &[FactItem],
         target_model: Option<&str>,
+        history: Option<&[ChatMessage]>,
     ) -> Result<String> {
         if !self.config.has_valid_groq_key() {
             warn!("GROQ_API_KEY is not configured. Generating context-backed response locally.");
@@ -119,12 +120,24 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
             if context_str.is_empty() { "No relevant memories found in vector store." } else { &context_str }
         );
 
+        let mut messages = Vec::new();
+        messages.push(json!({ "role": "system", "content": system_prompt }));
+
+        if let Some(hist) = history {
+            let start = if hist.len() > 10 { hist.len() - 10 } else { 0 };
+            for msg in &hist[start..] {
+                messages.push(json!({
+                    "role": msg.role,
+                    "content": msg.content
+                }));
+            }
+        }
+
+        messages.push(json!({ "role": "user", "content": question }));
+
         let payload = json!({
             "model": selected_model,
-            "messages": [
-                { "role": "system", "content": system_prompt },
-                { "role": "user", "content": question }
-            ],
+            "messages": messages,
             "temperature": 0.3,
             "max_tokens": 1024
         });

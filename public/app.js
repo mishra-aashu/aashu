@@ -597,23 +597,271 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Sidebar Toggle ---
     toggleSidebarBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
 
-    // --- Markdown formatter ---
+    // --- Multi-Turn Conversation Thread State ---
+    let chatHistory = [];
+    try {
+        const storedHist = sessionStorage.getItem('aashu_chat_history');
+        if (storedHist) chatHistory = JSON.parse(storedHist);
+    } catch (e) { chatHistory = []; }
+
+    const chatStreamContainer = document.getElementById('chat-stream-container');
+    const chatThreadBody      = document.getElementById('chat-thread-body');
+    const chatTurnBadge       = document.getElementById('chat-turn-badge');
+    const clearChatBtn        = document.getElementById('clear-chat-btn');
+
+    function updateChatHeaderUI() {
+        if (chatTurnBadge) {
+            chatTurnBadge.textContent = `${chatHistory.length} Turn${chatHistory.length === 1 ? '' : 's'}`;
+        }
+    }
+
+    function saveChatHistory() {
+        try {
+            sessionStorage.setItem('aashu_chat_history', JSON.stringify(chatHistory));
+        } catch (e) {}
+        updateChatHeaderUI();
+    }
+
+    function scrollToBottom() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            setTimeout(() => {
+                mainContent.scrollTo({ top: mainContent.scrollHeight, behavior: 'smooth' });
+            }, 50);
+        }
+    }
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // --- Markdown & Code Block Formatter ---
     function formatMarkdown(text) {
         if (!text) return '';
-        return text
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+        // Escape initial HTML tags for security
+        let formatted = escapeHTML(text);
+
+        // Fenced Code Blocks: ```lang \n code \n ```
+        formatted = formatted.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+            const cleanLang = lang.trim() || 'code';
+            return `
+                <div class="code-block-wrapper">
+                    <div class="code-block-header">
+                        <span><i class="fa-solid fa-code text-cyan"></i> ${cleanLang}</span>
+                        <button class="copy-code-btn" onclick="copyCodeSnippet(this)">
+                            <i class="fa-solid fa-copy"></i> <span>Copy Code</span>
+                        </button>
+                    </div>
+                    <pre><code>${code.trim()}</code></pre>
+                </div>
+            `;
+        });
+
+        // Inline Formatting
+        formatted = formatted
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
             .replace(/^\s*[-•]\s+(.*)$/gm, '<li class="response-li">$1</li>')
             .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+
+        return formatted;
+    }
+
+    window.copyCodeSnippet = function(btn) {
+        const wrapper = btn.closest('.code-block-wrapper');
+        if (!wrapper) return;
+        const codeText = wrapper.querySelector('pre code').textContent;
+        navigator.clipboard.writeText(codeText).then(() => {
+            const span = btn.querySelector('span');
+            const icon = btn.querySelector('i');
+            if (span) span.textContent = 'Copied!';
+            if (icon) icon.className = 'fa-solid fa-check text-cyan';
+            setTimeout(() => {
+                if (span) span.textContent = 'Copy Code';
+                if (icon) icon.className = 'fa-solid fa-copy';
+            }, 2000);
+        });
+    };
+
+    function renderMessageThread() {
+        if (!chatThreadBody) return;
+        if (chatHistory.length === 0) {
+            if (chatStreamContainer) chatStreamContainer.style.display = 'none';
+            if (welcomeState) welcomeState.style.display = 'flex';
+            return;
+        }
+
+        if (welcomeState) welcomeState.style.display = 'none';
+        if (chatStreamContainer) chatStreamContainer.style.display = 'flex';
+
+        chatThreadBody.innerHTML = '';
+        chatHistory.forEach((msg, idx) => {
+            if (msg.role === 'user') {
+                renderUserBubble(msg.content);
+            } else if (msg.role === 'assistant') {
+                renderAIBubble(msg.content, msg.retrievedFacts, msg.modelUsed, idx);
+            }
+        });
+        updateChatHeaderUI();
+        scrollToBottom();
+    }
+
+    function renderUserBubble(text) {
+        const row = document.createElement('div');
+        row.className = 'message-bubble-row user-bubble-row';
+        row.innerHTML = `
+            <div class="message-bubble user-bubble">
+                <div class="bubble-header">
+                    <span class="bubble-author">${userName || 'You'}</span>
+                    <span class="bubble-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+                <div class="bubble-body">${escapeHTML(text).replace(/\n/g, '<br>')}</div>
+            </div>
+            <div class="bubble-avatar user-avatar"><i class="fa-solid fa-user"></i></div>
+        `;
+        chatThreadBody.appendChild(row);
+        scrollToBottom();
+    }
+
+    function renderAIBubble(text, retrievedFacts, modelUsed) {
+        const row = document.createElement('div');
+        row.className = 'message-bubble-row ai-bubble-row';
+        
+        let factsHTML = '';
+        if (retrievedFacts && retrievedFacts.length > 0) {
+            factsHTML = `
+                <div class="context-facts-container">
+                    <h4><i class="fa-solid fa-database text-cyan"></i> ${retrievedFacts.length} Vector Memory Facts Used:</h4>
+                    <div class="context-facts-grid">
+                        ${retrievedFacts.map(f => `
+                            <div class="context-fact-pill">
+                                <div class="context-fact-header">
+                                    <span class="category-badge"><i class="fa-solid fa-tag"></i> ${f.category || 'General'}</span>
+                                    ${f.score ? `<span class="score-badge">${Math.round(f.score * 100)}% Match</span>` : ''}
+                                </div>
+                                <div class="fact-body-text">${escapeHTML(f.fact)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        const formattedBody = formatMarkdown(text);
+
+        row.innerHTML = `
+            <div class="bubble-avatar ai-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div class="message-bubble ai-bubble">
+                <div class="bubble-header">
+                    <span class="bubble-author"><i class="fa-solid fa-sparkles text-cyan"></i> Aashu AI ${modelUsed ? `<span style="font-weight:normal; opacity:0.75; font-size:11px;">(${modelUsed})</span>` : ''}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button class="icon-btn-sm speak-bubble-btn" title="Replay Speech">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                        <span class="bubble-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                </div>
+                <div class="bubble-body">${formattedBody}</div>
+                ${factsHTML}
+            </div>
+        `;
+        chatThreadBody.appendChild(row);
+
+        const speakBtn = row.querySelector('.speak-bubble-btn');
+        if (speakBtn) {
+            speakBtn.addEventListener('click', () => speakText(text));
+        }
+
+        scrollToBottom();
+    }
+
+    function showTypingIndicator() {
+        removeTypingIndicator();
+        const row = document.createElement('div');
+        row.className = 'message-bubble-row ai-bubble-row typing-row';
+        row.id = 'typing-indicator-row';
+        row.innerHTML = `
+            <div class="bubble-avatar ai-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div class="message-bubble ai-bubble typing-bubble">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+        chatThreadBody.appendChild(row);
+        scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+        const existing = document.getElementById('typing-indicator-row');
+        if (existing) existing.remove();
+    }
+
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', () => {
+            if (confirm('Clear current conversational chat thread?')) {
+                chatHistory = [];
+                sessionStorage.removeItem('aashu_chat_history');
+                chatThreadBody.innerHTML = '';
+                if (chatStreamContainer) chatStreamContainer.style.display = 'none';
+                if (welcomeState) welcomeState.style.display = 'flex';
+                updateChatHeaderUI();
+            }
+        });
+    }
+
+    // Render any restored session messages on load
+    if (chatHistory.length > 0) {
+        renderMessageThread();
+    }
+
+    // --- Three-Dots Top Menu Dropdown ---
+    const topMenuBtn = document.getElementById('top-menu-btn');
+    const topMenuDropdown = document.getElementById('top-menu-dropdown');
+    const activeModelName = document.getElementById('active-model-name');
+
+    if (topMenuBtn && topMenuDropdown) {
+        topMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = topMenuDropdown.style.display === 'flex';
+            topMenuDropdown.style.display = isOpen ? 'none' : 'flex';
+            topMenuBtn.classList.toggle('active', !isOpen);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#menu-container')) {
+                topMenuDropdown.style.display = 'none';
+                topMenuBtn.classList.remove('active');
+            }
+        });
+    }
+
+    function syncActiveModelLabel() {
+        if (modelSelector && activeModelName) {
+            const selectedOpt = modelSelector.options[modelSelector.selectedIndex];
+            if (selectedOpt) {
+                const labelText = selectedOpt.textContent.includes(':') 
+                    ? selectedOpt.textContent.split(':')[1].trim() 
+                    : selectedOpt.textContent;
+                activeModelName.textContent = labelText;
+            }
+        }
     }
 
     // --- Model Selector ---
     const modelSelector = document.getElementById('model-selector');
     const savedModel = localStorage.getItem('aashu_selected_model');
     if (savedModel && modelSelector) modelSelector.value = savedModel;
-    if (modelSelector) modelSelector.addEventListener('change', (e) => localStorage.setItem('aashu_selected_model', e.target.value));
+    if (modelSelector) {
+        syncActiveModelLabel();
+        modelSelector.addEventListener('change', (e) => {
+            localStorage.setItem('aashu_selected_model', e.target.value);
+            syncActiveModelLabel();
+        });
+    }
 
     // --- API Send ---
     sendBtn.addEventListener('click', submitRequest);
@@ -628,44 +876,75 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedModel = modelSelector ? modelSelector.value : null;
         if (isRecording) { recognition.stop(); stopRecording(); }
 
-        // Show response card, hide welcome
+        // Switch from Welcome state to Chat Stream
         welcomeState.style.display = 'none';
-        responseCard.style.display = 'block';
-        responseHeading.textContent = currentMode === 'ask' ? 'AI Answer' : 'Storing Memory...';
-        responseBodyText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> ${currentMode === 'ask' ? 'Searching vector DB & generating response...' : 'Extracting facts & embedding vector...'}`;
-        contextFactsContainer.style.display = 'none';
+        chatStreamContainer.style.display = 'flex';
+
         manualTextInput.value = '';
         manualTextInput.style.height = 'auto';
 
-        try {
-            if (currentMode === 'remember') {
+        if (currentMode === 'remember') {
+            renderUserBubble(`[Remember Fact] ${text}`);
+            showTypingIndicator();
+            try {
                 const res = await fetch(`${API_BASE}/api/remember`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                     body: JSON.stringify({ text, model: selectedModel })
                 });
                 const data = await res.json();
+                removeTypingIndicator();
+
+                let responseMsg = '';
                 if (data.status === 'success') {
-                    responseBodyText.innerHTML = `<i class="fa-solid fa-circle-check text-cyan"></i> <strong>Stored ${data.saved_count} Fact(s) Successfully!</strong><br><br>` +
-                        data.facts_extracted.map(f => `• <strong>${f.fact}</strong> <em>(${f.category || 'General'})</em>`).join('<br>');
+                    responseMsg = `Stored ${data.saved_count} Fact(s) Successfully into vector memory!\n\n` +
+                        data.facts_extracted.map(f => `• **${f.fact}** *(Category: ${f.category || 'General'})*`).join('\n');
                     speakText(`Stored ${data.saved_count} memory facts.`);
                     loadFacts();
                 } else {
-                    responseBodyText.textContent = `Error: ${data.message}`;
+                    responseMsg = `Failed to store fact: ${data.message}`;
                 }
-            } else {
-                // Ask Mode
+                renderAIBubble(responseMsg, [], selectedModel);
+            } catch (err) {
+                removeTypingIndicator();
+                renderAIBubble(`Server Error: ${err.message}`, [], selectedModel);
+            }
+        } else {
+            // Ask Mode — Multi-turn conversation
+            renderUserBubble(text);
+            showTypingIndicator();
+
+            // Prepare history payload (excluding current prompt)
+            const historyPayload = chatHistory.map(m => ({ role: m.role, content: m.content }));
+
+            // Store user turn in local history
+            chatHistory.push({ role: 'user', content: text });
+            saveChatHistory();
+
+            try {
                 const res = await fetch(`${API_BASE}/api/ask`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                    body: JSON.stringify({ question: text, model: selectedModel })
+                    body: JSON.stringify({ question: text, model: selectedModel, history: historyPayload })
                 });
                 const data = await res.json();
+                removeTypingIndicator();
 
-                responseBodyText.innerHTML = formatMarkdown(data.answer);
-                speakText(data.answer);
-                if (contextFactsContainer) contextFactsContainer.style.display = 'none';
+                const answerText = data.answer || 'No response generated.';
+                renderAIBubble(answerText, data.retrieved_facts, data.model_used);
+
+                // Store AI turn in local history
+                chatHistory.push({
+                    role: 'assistant',
+                    content: answerText,
+                    retrievedFacts: data.retrieved_facts,
+                    modelUsed: data.model_used
+                });
+                saveChatHistory();
+
+                speakText(answerText);
+            } catch (err) {
+                removeTypingIndicator();
+                renderAIBubble(`Server Error: ${err.message}`, [], selectedModel);
             }
-        } catch (err) {
-            responseBodyText.textContent = `Server Error: ${err.message}`;
         }
     }
 

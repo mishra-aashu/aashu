@@ -24,10 +24,17 @@ pub struct RememberResponse {
     pub message: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct AskRequest {
     pub question: String,
     pub model: Option<String>,
+    pub history: Option<Vec<ChatMessage>>,
 }
 
 #[derive(Debug, Serialize)]

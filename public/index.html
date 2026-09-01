@@ -55,44 +55,88 @@
         <main class="main-content">
             <!-- Top Navbar -->
             <header class="top-nav">
-                <div class="status-pills">
+                <div class="top-nav-left">
+                    <button class="icon-btn" id="toggle-sidebar-btn" title="Toggle Memory Drawer">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </button>
                     <div class="status-pill" id="system-status" title="Backend Server Connection">
                         <span class="dot green" id="status-dot"></span>
                         <span id="status-text">Online</span>
                     </div>
-                    <div class="status-pill model-select-pill" title="Select Groq AI Model">
+                    <div class="active-model-badge" id="active-model-badge" title="Active LLM Model">
                         <i class="fa-solid fa-brain text-cyan"></i>
-                        <select id="model-selector" class="model-select-dropdown">
-                            <option value="llama-3.3-70b-versatile">Smart: Llama 3.3 (70B)</option>
-                            <option value="llama-3.1-8b-instant">Fast: Llama 3.1 (8B)</option>
-                            <option value="mixtral-8x7b-32768">Balanced: Mixtral (8x7B)</option>
-                            <option value="deepseek-r1-distill-llama-70b">Reasoning: DeepSeek R1 (70B)</option>
-                            <option value="gemma2-9b-it">Gemma 2 (9B)</option>
-                        </select>
-                    </div>
-                    <div class="status-pill lang-pill" id="lang-pill" title="Toggle Voice & Speech Language Mode (Hindi / English / Auto)">
-                        <i class="fa-solid fa-language text-cyan"></i>
-                        <span id="lang-label">Auto (HI / EN)</span>
-                    </div>
-                    <div class="status-pill wakeword-pill" id="wakeword-status-pill" title="Click to customize Wake Word">
-                        <i class="fa-solid fa-ear-listen text-pink" id="wakeword-pill-icon"></i>
-                        <span id="wakeword-label">Wake: "hey aashu"</span>
+                        <span id="active-model-name">Llama 3.3 (70B)</span>
                     </div>
                 </div>
 
-                <div class="top-controls">
-                    <button class="icon-btn" id="reset-app-btn" title="Reset All Data & Re-run Setup">
-                        <i class="fa-solid fa-arrow-rotate-left" style="color: var(--accent-cyan);"></i>
-                    </button>
-                    <button class="icon-btn active-wake" id="toggle-wakeword-btn" title="Toggle Hands-Free Mode">
-                        <i class="fa-solid fa-microphone-lines" id="wakeword-btn-icon" style="color: var(--accent-pink);"></i>
-                    </button>
-                    <button class="icon-btn" id="toggle-voice-btn" title="Toggle Voice Output">
-                        <i class="fa-solid fa-volume-high" id="voice-icon"></i>
-                    </button>
-                    <button class="icon-btn" id="toggle-sidebar-btn" title="Toggle Memory Drawer">
-                        <i class="fa-solid fa-folder-open"></i>
-                    </button>
+                <div class="top-nav-right">
+                    <!-- Three-Dots Menu Popover Container -->
+                    <div class="menu-container" id="menu-container">
+                        <button class="icon-btn menu-btn" id="top-menu-btn" title="Settings & Options">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+
+                        <!-- Glassmorphic Dropdown Menu -->
+                        <div class="top-menu-dropdown glass-panel" id="top-menu-dropdown" style="display: none;">
+                            <div class="menu-header">
+                                <span><i class="fa-solid fa-sliders text-cyan"></i> Quick Settings</span>
+                            </div>
+
+                            <!-- AI Model Select -->
+                            <div class="menu-item">
+                                <div class="menu-item-label">
+                                    <i class="fa-solid fa-brain text-cyan"></i>
+                                    <span>AI Model</span>
+                                </div>
+                                <select id="model-selector" class="menu-select-dropdown">
+                                    <option value="llama-3.3-70b-versatile">Smart: Llama 3.3 (70B)</option>
+                                    <option value="llama-3.1-8b-instant">Fast: Llama 3.1 (8B)</option>
+                                    <option value="mixtral-8x7b-32768">Balanced: Mixtral (8x7B)</option>
+                                    <option value="deepseek-r1-distill-llama-70b">Reasoning: DeepSeek R1 (70B)</option>
+                                    <option value="gemma2-9b-it">Gemma 2 (9B)</option>
+                                </select>
+                            </div>
+
+                            <!-- Voice Language Mode -->
+                            <div class="menu-item clickable" id="lang-pill" title="Toggle Voice Language Mode">
+                                <div class="menu-item-label">
+                                    <i class="fa-solid fa-language text-cyan"></i>
+                                    <span>Voice Language</span>
+                                </div>
+                                <span class="menu-item-badge" id="lang-label">Auto (HI / EN)</span>
+                            </div>
+
+                            <!-- Wake Word Status & Customization -->
+                            <div class="menu-item clickable" id="wakeword-status-pill" title="Customize Wake Word">
+                                <div class="menu-item-label">
+                                    <i class="fa-solid fa-ear-listen text-pink" id="wakeword-pill-icon"></i>
+                                    <span>Wake Phrase</span>
+                                </div>
+                                <span class="menu-item-badge text-pink" id="wakeword-label">Wake: "hey aashu"</span>
+                            </div>
+
+                            <div class="menu-divider"></div>
+
+                            <!-- Action Toggles -->
+                            <button class="menu-action-btn" id="toggle-wakeword-btn">
+                                <i class="fa-solid fa-microphone-lines text-pink" id="wakeword-btn-icon"></i>
+                                <span>Toggle Hands-Free Mode</span>
+                            </button>
+
+                            <button class="menu-action-btn" id="toggle-voice-btn">
+                                <i class="fa-solid fa-volume-high text-cyan" id="voice-icon"></i>
+                                <span>Toggle Voice Response</span>
+                            </button>
+
+                            <div class="menu-divider"></div>
+
+                            <!-- Reset App Setup -->
+                            <button class="menu-action-btn danger" id="reset-app-btn">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
+                                <span>Reset Data & Re-run Setup</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -113,26 +157,27 @@
                     </p>
                 </div>
 
-                <!-- AI Response Card (shown after query) -->
-                <section class="response-card glass-panel" id="response-card" style="display: none;">
-                    <div class="response-header">
-                        <div class="response-title">
-                            <i class="fa-solid fa-sparkles text-cyan"></i>
-                            <h3 id="response-heading">AI Memory Response</h3>
+                <!-- Multi-Turn Chat Stream Container -->
+                <div class="chat-stream-container" id="chat-stream-container" style="display: none;">
+                    <div class="chat-stream-header">
+                        <div class="chat-header-title">
+                            <i class="fa-solid fa-comments text-cyan"></i>
+                            <span>Conversation Thread</span>
+                            <span class="chat-turn-badge" id="chat-turn-badge">0 Turns</span>
                         </div>
-                        <button class="icon-btn-sm" id="speak-response-btn" title="Replay Voice Speech">
-                            <i class="fa-solid fa-volume-high"></i>
+                        <button class="clear-chat-btn" id="clear-chat-btn" title="Clear Conversation Context">
+                            <i class="fa-solid fa-broom"></i>
+                            <span>Clear Chat</span>
                         </button>
                     </div>
 
-                    <div class="response-body" id="response-body-text"></div>
-
-                    <!-- Context Facts -->
-                    <div class="context-facts-container" id="context-facts-container" style="display: none;">
-                        <h4><i class="fa-solid fa-database"></i> Facts Retrieved From Local Vector DB:</h4>
-                        <div class="context-facts-grid" id="context-facts-grid"></div>
+                    <div class="chat-thread-body" id="chat-thread-body">
+                        <!-- User and AI Message Bubbles rendered dynamically here -->
                     </div>
-                </section>
+                </div>
+
+                <!-- Legacy Response Card element kept hidden for backward selector compatibility -->
+                <section class="response-card glass-panel" id="response-card" style="display: none;"></section>
 
             </div><!-- end chat-area -->
 

@@ -276,10 +276,10 @@ async fn ask_handler(
         }
     };
 
-    // 3. Ask Groq API with query & context facts
+    // 3. Ask Groq API with query, context facts & chat history
     let answer = match state
         .groq
-        .answer_question(&req.question, &relevant_facts, Some(&chosen_model))
+        .answer_question(&req.question, &relevant_facts, Some(&chosen_model), req.history.as_deref())
         .await
     {
         Ok(ans) => ans,
