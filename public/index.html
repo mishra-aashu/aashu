@@ -483,8 +483,20 @@
                         <i class="fa-solid fa-volume-high"></i> Text-to-Speech Output Controls
                     </div>
                     <p class="settings-description">
-                        Adjust voice speech synthesis speed rate and pitch for AI spoken responses.
+                        Select AI speaking voice persona and adjust speech synthesis speed rate and pitch for spoken responses.
                     </p>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="tts-voice-select">
+                            <i class="fa-solid fa-user-gear text-cyan"></i> Select AI Speaking Voice Persona
+                        </label>
+                        <select id="tts-voice-select" class="settings-input-field" style="width: 100%; cursor: pointer;">
+                            <option value="auto">✨ Default Auto-Select (Hindi / English)</option>
+                        </select>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">
+                            Choose from available system & browser voices (Hindi, English, Male, Female).
+                        </div>
+                    </div>
 
                     <div class="slider-group">
                         <div class="slider-header">

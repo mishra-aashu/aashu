@@ -195,7 +195,73 @@
             });
         }
 
-        // 3. TTS Sliders Handler
+        // 3. TTS Voice Persona & Sliders Handler
+        const ttsVoiceSelect = document.getElementById('tts-voice-select');
+
+        function populateVoiceDropdown() {
+            if (!ttsVoiceSelect || !('speechSynthesis' in window)) return;
+            const voices = window.speechSynthesis.getVoices();
+            if (!voices || voices.length === 0) return;
+
+            const savedVoice = localStorage.getItem('aashu_tts_voice') || 'auto';
+            ttsVoiceSelect.innerHTML = '<option value="auto">✨ Default Auto-Select (Hindi / English)</option>';
+
+            const hiVoices = [];
+            const enInVoices = [];
+            const enUsVoices = [];
+            const otherVoices = [];
+
+            voices.forEach(voice => {
+                const lang = voice.lang.toLowerCase();
+                const name = voice.name.toLowerCase();
+                if (lang.includes('hi') || name.includes('hindi')) {
+                    hiVoices.push(voice);
+                } else if (lang.includes('en-in') || name.includes('india')) {
+                    enInVoices.push(voice);
+                } else if (lang.includes('en-us') || lang.includes('en-gb') || name.includes('english')) {
+                    enUsVoices.push(voice);
+                } else {
+                    otherVoices.push(voice);
+                }
+            });
+
+            const appendGroup = (label, voiceList) => {
+                if (voiceList.length === 0) return;
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = label;
+                voiceList.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.name;
+                    opt.textContent = `${v.name} (${v.lang})`;
+                    if (v.name === savedVoice) opt.selected = true;
+                    optgroup.appendChild(opt);
+                });
+                ttsVoiceSelect.appendChild(optgroup);
+            };
+
+            appendGroup(' Hindi Spoken Voices', hiVoices);
+            appendGroup(' Indian English Voices', enInVoices);
+            appendGroup(' English / US Voices', enUsVoices);
+            appendGroup('🌐 System / Other Voices', otherVoices);
+
+            if (savedVoice === 'auto') {
+                ttsVoiceSelect.value = 'auto';
+            }
+        }
+
+        if ('speechSynthesis' in window) {
+            populateVoiceDropdown();
+            window.speechSynthesis.onvoiceschanged = populateVoiceDropdown;
+        }
+
+        if (ttsVoiceSelect) {
+            ttsVoiceSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                localStorage.setItem('aashu_tts_voice', val);
+                triggerToast(`AI Voice Persona set to: ${val === 'auto' ? 'Auto-Select' : val}`, 'success');
+            });
+        }
+
         if (ttsRateSlider) {
             ttsRateSlider.value = ttsRate;
             if (ttsRateVal) ttsRateVal.textContent = `${ttsRate.toFixed(1)}x`;
@@ -222,9 +288,21 @@
             testTtsBtn.addEventListener('click', () => {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
-                    const utt = new SpeechSynthesisUtterance("Namaste! Voice speech output test completed successfully.");
+                    const savedVoice = localStorage.getItem('aashu_tts_voice') || 'auto';
+                    const isHindiVoice = savedVoice.toLowerCase().includes('hi') || savedVoice.toLowerCase().includes('hindi');
+                    const sampleText = isHindiVoice
+                        ? "Namaste! Main Aashu AI hoon, aapka personal voice assistant."
+                        : "Hello! I am Aashu AI, your personal voice assistant.";
+
+                    const utt = new SpeechSynthesisUtterance(sampleText);
                     utt.rate = ttsRate;
                     utt.pitch = ttsPitch;
+
+                    const voices = window.speechSynthesis.getVoices();
+                    if (savedVoice !== 'auto' && voices.length > 0) {
+                        const vObj = voices.find(v => v.name === savedVoice);
+                        if (vObj) utt.voice = vObj;
+                    }
                     window.speechSynthesis.speak(utt);
                 }
             });

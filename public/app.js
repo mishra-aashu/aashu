@@ -886,21 +886,43 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Dual Language Text-to-Speech ---
+    // --- Dual Language Text-to-Speech & Voice Persona Engine ---
     function speakText(text) {
         if (!isVoiceOutputEnabled || !('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
 
-        // Clean markdown formatting symbols
-        const cleanText = text.replace(/[*#`_~]/g, '');
+        // Clean markdown formatting & code blocks for natural speech
+        const cleanText = text.replace(/```[\s\S]*?```/g, ' Code snippet omitted for speech. ')
+                              .replace(/[*#`_~>]/g, '')
+                              .replace(/http\S+/g, '')
+                              .trim();
+
+        if (!cleanText) return;
         const utterance = new SpeechSynthesisUtterance(cleanText);
 
-        // Check for Devanagari Hindi characters
-        const containsHindiScript = /[\u0900-\u097F]/.test(cleanText);
-        const isHindiMode = (currentLangMode === 'hi-IN') || (currentLangMode === 'auto' && containsHindiScript);
+        // Fetch User Pitch, Speed Rate, and Voice Persona Preferences
+        const savedRate = parseFloat(localStorage.getItem('aashu_tts_rate') || '1.0');
+        const savedPitch = parseFloat(localStorage.getItem('aashu_tts_pitch') || '1.0');
+        const savedVoiceName = localStorage.getItem('aashu_tts_voice') || 'auto';
+
+        utterance.rate = savedRate;
+        utterance.pitch = savedPitch;
 
         const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
+
+        if (savedVoiceName && savedVoiceName !== 'auto' && voices.length > 0) {
+            const selectedVoice = voices.find(v => v.name === savedVoiceName || v.voiceURI === savedVoiceName);
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                utterance.lang = selectedVoice.lang;
+            }
+        }
+
+        // Automatic smart fallback if no specific voice is selected
+        if (!utterance.voice && voices.length > 0) {
+            const containsHindiScript = /[\u0900-\u097F]/.test(cleanText);
+            const isHindiMode = (currentLangMode === 'hi-IN') || (currentLangMode === 'auto' && containsHindiScript);
+
             if (isHindiMode) {
                 const hiVoice = voices.find(v => v.lang.toLowerCase().includes('hi') || v.name.toLowerCase().includes('hindi'));
                 if (hiVoice) utterance.voice = hiVoice;
@@ -910,12 +932,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (enVoice) utterance.voice = enVoice;
                 utterance.lang = 'en-US';
             }
-        } else {
-            utterance.lang = isHindiMode ? 'hi-IN' : 'en-US';
         }
 
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
         utterance.onstart = () => startWaveAnimation();
         window.speechSynthesis.speak(utterance);
     }
