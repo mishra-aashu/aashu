@@ -5,6 +5,7 @@ pub mod groq;
 pub mod models;
 
 use axum::{
+    body::Bytes,
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
@@ -162,7 +163,8 @@ pub async fn start_server() -> anyhow::Result<()> {
         .route("/has-password", get(has_password_handler))
         .route("/settings/groq-key", post(save_groq_key_handler))
         .route("/settings/groq-key", get(get_groq_key_status_handler))
-        .route("/reset-data", post(reset_data_handler));
+        .route("/reset-data", post(reset_data_handler))
+        .route("/transcribe", post(transcribe_handler));
 
     let app = Router::new()
         .nest("/api", api_routes)
@@ -737,6 +739,64 @@ async fn reset_data_handler(
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"status": "error", "message": e.to_string()})),
+        ).into_response(),
+    }
+}
+
+async fn transcribe_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> impl IntoResponse {
+    let api_key_override = headers
+        .get("x-groq-api-key")
+        .and_then(|v| v.to_str().ok());
+
+    let content_type = headers
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("audio/webm");
+
+    let mime_type = if content_type.contains("wav") {
+        "audio/wav"
+    } else if content_type.contains("ogg") {
+        "audio/ogg"
+    } else if content_type.contains("mp3") {
+        "audio/mp3"
+    } else {
+        "audio/webm"
+    };
+
+    let file_name = if mime_type == "audio/wav" {
+        "speech.wav"
+    } else {
+        "speech.webm"
+    };
+
+    if body.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": "Empty audio body received."
+            })),
+        ).into_response();
+    }
+
+    match state.groq.transcribe_audio(body.to_vec(), file_name, mime_type, api_key_override).await {
+        Ok(text) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "success",
+                "text": text
+            })),
+        ).into_response(),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "status": "error",
+                "message": e.to_string()
+            })),
         ).into_response(),
     }
 }

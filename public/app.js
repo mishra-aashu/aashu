@@ -559,9 +559,136 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.showMicBlockedGuide = showMicBlockedGuide;
 
+    // === Native MediaRecorder Voice Recording Engine (Groq Whisper AI Backend) ===
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let mediaStream = null;
+    let isMediaRecorderRecording = false;
+
+    async function startMediaRecorderRecording() {
+        try {
+            audioChunks = [];
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            let mimeType = 'audio/webm';
+            if (typeof MediaRecorder !== 'undefined') {
+                if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+                    else if (MediaRecorder.isTypeSupported('audio/ogg')) mimeType = 'audio/ogg';
+                    else mimeType = '';
+                }
+            }
+
+            mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                audioChunks = [];
+
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+
+                if (audioBlob.size < 200) {
+                    console.warn('Audio snippet too short');
+                    stopRecording();
+                    return;
+                }
+
+                if (micStatusLabel) {
+                    micStatusLabel.style.display = 'block';
+                    micStatusLabel.innerHTML = `<span style="color:var(--accent-cyan); font-weight:600;"><i class="fa-solid fa-spinner fa-spin"></i> Transcribing voice via Whisper AI...</span>`;
+                }
+
+                try {
+                    const headers = getAuthHeaders();
+                    if (headers['Content-Type']) delete headers['Content-Type'];
+
+                    const res = await fetch(`${API_BASE}/api/transcribe`, {
+                        method: 'POST',
+                        headers: {
+                            ...headers,
+                            'Content-Type': mediaRecorder.mimeType || 'audio/webm'
+                        },
+                        body: audioBlob
+                    });
+
+                    const data = await res.json();
+                    if (res.ok && data.text && data.text.trim()) {
+                        console.log(' Whisper Transcribed:', data.text);
+                        if (manualTextInput) {
+                            manualTextInput.value = data.text.trim();
+                        }
+                        if (transcriptText) {
+                            transcriptText.textContent = data.text.trim();
+                        }
+                        stopRecording();
+                        submitRequest();
+                    } else {
+                        const err = data.message || 'No speech recognized by Whisper.';
+                        if (window.showToast) window.showToast(err, 'warning');
+                        stopRecording();
+                    }
+                } catch (err) {
+                    console.error('Transcription API error:', err);
+                    if (window.showToast) window.showToast('Voice transcription error: ' + err.message, 'error');
+                    stopRecording();
+                }
+            };
+
+            mediaRecorder.start();
+            isMediaRecorderRecording = true;
+            isRecording = true;
+
+            if (micBtn) micBtn.classList.add('recording');
+            if (micBtnInline) micBtnInline.classList.add('recording');
+            if (micIcon) micIcon.className = 'fa-solid fa-stop';
+            if (micIcon2) micIcon2.className = 'fa-solid fa-stop';
+            if (transcriptBox) transcriptBox.style.display = 'flex';
+            if (transcriptText) transcriptText.textContent = 'Recording voice... Speak into microphone.';
+            if (micStatusLabel) {
+                micStatusLabel.style.display = 'block';
+                micStatusLabel.innerHTML = `<span style="color:var(--accent-green); font-weight: 600;"><i class="fa-solid fa-microphone fa-beat"></i> Recording voice... Click mic again when finished.</span>`;
+            }
+            startWaveAnimation();
+            return true;
+
+        } catch (err) {
+            console.error('Failed to start MediaRecorder:', err);
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                showMicBlockedGuide();
+            } else {
+                if (window.showToast) window.showToast('Could not access mic: ' + err.message, 'error');
+            }
+            stopRecording();
+            return false;
+        }
+    }
+
+    function stopMediaRecorderRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            try {
+                mediaRecorder.stop();
+            } catch(e) { console.warn(e); }
+        }
+        isMediaRecorderRecording = false;
+    }
+
     // Expose globally so HTML onclick="window.toggleRecording(event)" works as backup
     window.toggleRecording = async function toggleRecording(e) {
         if (e && e.preventDefault) e.preventDefault();
+
+        if (isMediaRecorderRecording) {
+            stopMediaRecorderRecording();
+            return;
+        }
 
         if (recognition && !isRecording) {
             const permState = await checkMicPermission();
@@ -576,27 +703,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!recognition) {
-            // SpeechRecognition not available (WebKit/Tauri webview)
-            if (micBtn) micBtn.classList.add('recording');
-            if (micBtnInline) micBtnInline.classList.add('recording');
-            if (micIcon) micIcon.className = 'fa-solid fa-keyboard';
-            if (micIcon2) micIcon2.className = 'fa-solid fa-keyboard';
-            if (micStatusLabel) {
-                micStatusLabel.style.display = 'block';
-                micStatusLabel.innerHTML = `<span style="color:var(--accent-cyan); font-weight:600;"><i class="fa-solid fa-circle-info"></i> Voice not supported here — type your query below and press Enter.</span>`;
-            }
-            if (manualTextInput) {
-                manualTextInput.focus();
-                manualTextInput.placeholder = 'Type your query here and press Enter...';
-            }
-            if (window.showToast) window.showToast('Voice input unavailable in this webview. Please type below.', 'info');
-            setTimeout(() => {
-                if (micBtn) micBtn.classList.remove('recording');
-                if (micBtnInline) micBtnInline.classList.remove('recording');
-                if (micIcon) micIcon.className = 'fa-solid fa-microphone';
-                if (micIcon2) micIcon2.className = 'fa-solid fa-microphone';
-                if (micStatusLabel) micStatusLabel.style.display = 'none';
-            }, 3000);
+            // Use Core Native MediaRecorder Voice System when SpeechRecognition is missing
+            startMediaRecorderRecording();
             return;
         }
 
@@ -628,6 +736,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function stopRecording() {
         if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+        if (isMediaRecorderRecording) {
+            stopMediaRecorderRecording();
+        }
         isRecording = false;
         isWakeAwake = false;
         if (wakewordStatusPill) wakewordStatusPill.classList.remove('listening-active');

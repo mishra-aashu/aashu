@@ -175,6 +175,52 @@ Strict Rule: Return ONLY raw JSON array. No markdown code blocks, no explanation
         Ok(content)
     }
 
+    pub async fn transcribe_audio(
+        &self,
+        audio_bytes: Vec<u8>,
+        file_name: &str,
+        mime_type: &str,
+        api_key_override: Option<&str>,
+    ) -> Result<String> {
+        let key = api_key_override
+            .filter(|k| !k.trim().is_empty())
+            .unwrap_or(&self.config.groq_api_key);
+
+        if key.trim().is_empty() || key.contains("YOUR_GROQ_API_KEY") {
+            return Err(anyhow!("GROQ_API_KEY is not configured for Whisper voice transcription."));
+        }
+
+        let part = reqwest::multipart::Part::bytes(audio_bytes)
+            .file_name(file_name.to_string())
+            .mime_str(mime_type)?;
+
+        let form = reqwest::multipart::Form::new()
+            .text("model", "whisper-large-v3-turbo")
+            .part("file", part);
+
+        let response = self
+            .client
+            .post("https://api.groq.com/openai/v1/audio/transcriptions")
+            .header("Authorization", format!("Bearer {}", key))
+            .multipart(form)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let err_text = response.text().await.unwrap_or_default();
+            return Err(anyhow!("Groq Transcription API error: {}", err_text));
+        }
+
+        let json_body: Value = response.json().await?;
+        let text = json_body["text"]
+            .as_str()
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+
+        Ok(text)
+    }
+
     fn fallback_extract_facts(&self, text: &str) -> Vec<FactItem> {
         let sentences: Vec<&str> = text
             .split(&['.', '!', '?', '\n'][..])
