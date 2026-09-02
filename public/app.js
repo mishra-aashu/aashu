@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isWin) {
             guide = 'Microphone blocked! Go to Windows Settings → Privacy & Security → Microphone → Enable "Let desktop apps access your microphone"';
         } else if (isLinux) {
-            guide = 'Microphone blocked on Linux! Check System Settings → Privacy → Microphone, or verify your PulseAudio/PipeWire input permissions.';
+            guide = 'Microphone not accessible! Run "pavucontrol" or open System Audio Settings to verify your input device is active. Also check: pactl list sources short';
         }
         if (window.showToast) window.showToast(guide, 'error', 8000);
     }
