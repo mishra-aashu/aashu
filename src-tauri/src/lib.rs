@@ -34,6 +34,23 @@ pub fn run() {
         );
       }
 
+      // Auto-grant microphone/camera permissions on Linux WebKitGTK
+      // Without this, getUserMedia() silently fails — no prompt appears
+      #[cfg(target_os = "linux")]
+      {
+        use tauri::Manager;
+        let main_webview = _app.get_webview_window("main").unwrap();
+        let _ = main_webview.with_webview(|webview| {
+          use webkit2gtk::prelude::*;
+          let wv = webview.inner();
+          wv.connect_permission_request(|_wv, request| {
+            // Auto-allow all media permission requests (microphone, camera)
+            request.allow();
+            true
+          });
+        });
+      }
+
       // Auto-spawn Axum backend server in background Tokio task
       tauri::async_runtime::spawn(async {
         if let Err(e) = aashu_backend::start_server().await {
