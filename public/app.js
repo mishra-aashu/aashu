@@ -392,6 +392,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function stopWaveAnimation() {
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+        if (ctx && waveCanvas) {
+            ctx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+        }
+    }
+
     // --- Web Speech Recognition Setup with Smart Silence Auto-Submit ---
     let silenceTimer = null;
     const SILENCE_THRESHOLD_MS = 1700; // 1.7 seconds gap auto-submits
@@ -678,7 +688,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 mediaRecorder.stop();
             } catch(e) { console.warn(e); }
         }
+        if (mediaStream) {
+            try {
+                mediaStream.getTracks().forEach(track => track.stop());
+            } catch(e) {}
+            mediaStream = null;
+        }
         isMediaRecorderRecording = false;
+        stopWaveAnimation();
     }
 
     // Expose globally so HTML onclick="window.toggleRecording(event)" works as backup
@@ -748,6 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (micIcon2) micIcon2.className = 'fa-solid fa-microphone';
         if (transcriptBox) transcriptBox.style.display = 'none';
         if (micStatusLabel) micStatusLabel.style.display = 'none';
+        stopWaveAnimation();
     }
 
     // Attach click listeners (window.toggleRecording also covers HTML onclick fallback)
@@ -935,6 +953,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         utterance.onstart = () => startWaveAnimation();
+        utterance.onend = () => stopWaveAnimation();
+        utterance.onerror = () => stopWaveAnimation();
         window.speechSynthesis.speak(utterance);
     }
 
