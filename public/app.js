@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             if (errorMsg) {
                                 errorMsg.style.display = 'block';
-                                errorMsg.textContent = '❌ Incorrect password. Access denied.';
+                                errorMsg.textContent = 'Incorrect password. Access denied.';
                             }
                             if (lockInput) {
                                 lockInput.value = '';
@@ -553,15 +553,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             stream.getTracks().forEach(track => track.stop());
-            console.log('✅ Microphone access granted');
+            console.log('Microphone access granted');
             return true;
         } catch (err) {
             if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                console.warn('❌ Microphone access denied by user or system');
+                console.warn('Microphone access denied by user or system');
                 showMicBlockedGuide();
                 return false;
             } else if (err.name === 'NotFoundError') {
-                console.warn('🎤 No microphone device found');
+                console.warn('No microphone device found');
                 if (window.showToast) window.showToast('No microphone device found on Linux system.', 'warning');
                 return false;
             }
@@ -575,11 +575,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isWin = navigator.userAgent.includes('Windows');
         const isLinux = navigator.userAgent.includes('Linux') || navigator.platform.includes('Linux');
         
-        let guide = '🎤 Microphone blocked! Please check your system privacy settings to allow microphone access.';
+        let guide = 'Microphone blocked! Please check your system privacy settings to allow microphone access.';
         if (isWin) {
-            guide = '🎤 Microphone blocked! Go to Windows Settings → Privacy & Security → Microphone → Enable "Let desktop apps access your microphone"';
+            guide = 'Microphone blocked! Go to Windows Settings → Privacy & Security → Microphone → Enable "Let desktop apps access your microphone"';
         } else if (isLinux) {
-            guide = '🎤 Microphone blocked on Linux! Check System Settings → Privacy → Microphone, or verify your PulseAudio/PipeWire input permissions.';
+            guide = 'Microphone blocked on Linux! Check System Settings → Privacy → Microphone, or verify your PulseAudio/PipeWire input permissions.';
         }
         if (window.showToast) window.showToast(guide, 'error', 8000);
     }
@@ -1370,7 +1370,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderAIBubble(responseMsg, [], selectedModel);
             } catch (err) {
                 removeTypingIndicator();
-                renderAIBubble(`Server Error: ${err.message}`, [], selectedModel);
+                const errMsg = (err.message === 'Load failed' || err.message === 'Failed to fetch')
+                    ? 'Backend Disconnected: Unable to reach backend server on http://localhost:3000.'
+                    : `Server Error: ${err.message}`;
+                renderAIBubble(errMsg, [], selectedModel);
             }
         } else {
             // Ask Mode — Multi-turn conversation
@@ -1407,7 +1410,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 speakText(answerText);
             } catch (err) {
                 removeTypingIndicator();
-                renderAIBubble(`Server Error: ${err.message}`, [], selectedModel);
+                const errMsg = (err.message === 'Load failed' || err.message === 'Failed to fetch')
+                    ? 'Backend Disconnected: Unable to reach backend server on http://localhost:3000.'
+                    : `Server Error: ${err.message}`;
+                renderAIBubble(errMsg, [], selectedModel);
             }
         }
     }

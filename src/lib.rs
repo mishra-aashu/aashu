@@ -36,14 +36,75 @@ pub struct AppState {
     pub config: Config,
 }
 
+pub const MAX_FREE_DAILY_QUERIES: u32 = 20;
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct GroqKeyUsageInfo {
+    pub key: String,
+    pub is_custom: bool,
+    pub free_queries_used: u32,
+    pub free_queries_limit: u32,
+    pub free_queries_remaining: u32,
+}
+
 impl AppState {
-    pub fn get_effective_groq_key(&self) -> String {
-        if let Ok(Some(key)) = self.db.get_setting("groq_api_key") {
-            if !key.trim().is_empty() {
-                return key.trim().to_string();
-            }
+    pub fn get_groq_key_info(&self) -> GroqKeyUsageInfo {
+        let custom_key = self.db.get_setting("groq_api_key").ok().flatten().unwrap_or_default();
+        if !custom_key.trim().is_empty() && !custom_key.contains("YOUR_GROQ_API_KEY") {
+            return GroqKeyUsageInfo {
+                key: custom_key.trim().to_string(),
+                is_custom: true,
+                free_queries_used: 0,
+                free_queries_limit: MAX_FREE_DAILY_QUERIES,
+                free_queries_remaining: MAX_FREE_DAILY_QUERIES,
+            };
         }
-        self.config.groq_api_key.clone()
+
+        let shared_key = self.config.groq_api_key.trim().to_string();
+        let today = self.db.get_current_date();
+        let stored_date = self.db.get_setting("shared_key_usage_date").ok().flatten().unwrap_or_default();
+        let used_count: u32 = if stored_date == today {
+            self.db.get_setting("shared_key_usage_count")
+                .ok().flatten().and_then(|c| c.parse().ok()).unwrap_or(0)
+        } else {
+            0
+        };
+
+        let remaining = MAX_FREE_DAILY_QUERIES.saturating_sub(used_count);
+
+        GroqKeyUsageInfo {
+            key: shared_key,
+            is_custom: false,
+            free_queries_used: used_count,
+            free_queries_limit: MAX_FREE_DAILY_QUERIES,
+            free_queries_remaining: remaining,
+        }
+    }
+
+    pub fn get_effective_groq_key(&self) -> String {
+        self.get_groq_key_info().key
+    }
+
+    pub fn consume_shared_query(&self) -> Result<(), String> {
+        let info = self.get_groq_key_info();
+        if info.is_custom {
+            return Ok(()); // User's personal custom API key has NO rate limits!
+        }
+
+        if info.key.is_empty() || info.key.contains("YOUR_GROQ_API_KEY") {
+            return Err("GROQ API Key is not configured. Please add your personal Groq API Key in Settings.".to_string());
+        }
+
+        if info.free_queries_remaining == 0 {
+            return Err(format!("Daily free limit of {} queries reached! Please enter your personal Groq API Key in Settings to unlock unlimited AI queries.", MAX_FREE_DAILY_QUERIES));
+        }
+
+        let today = self.db.get_current_date();
+        let new_count = info.free_queries_used + 1;
+        let _ = self.db.set_setting("shared_key_usage_date", &today);
+        let _ = self.db.set_setting("shared_key_usage_count", &new_count.to_string());
+
+        Ok(())
     }
 }
 
@@ -314,7 +375,19 @@ async fn ask_handler(
         }
     };
 
-    // 3. Ask Groq API with query, context facts & chat history
+    // 3. Rate limit check for shared repo key
+    if let Err(limit_msg) = state.consume_shared_query() {
+        return (
+            StatusCode::OK,
+            Json(AskResponse {
+                answer: limit_msg,
+                retrieved_facts: relevant_facts,
+                model_used: chosen_model,
+            }),
+        ).into_response();
+    }
+
+    // 4. Ask Groq API with query, context facts & chat history
     let effective_key = state.get_effective_groq_key();
     let answer = match state
         .groq
@@ -589,12 +662,17 @@ async fn get_groq_key_status_handler(
         return auth_err.into_response();
     }
 
-    let key = state.get_effective_groq_key();
-    let is_configured = !key.trim().is_empty() && !key.contains("YOUR_GROQ_API_KEY");
-    let masked_key = if is_configured && key.len() > 8 {
-        format!("{}...{}", &key[..4], &key[key.len() - 4..])
+    let info = state.get_groq_key_info();
+    let is_configured = !info.key.trim().is_empty() && !info.key.contains("YOUR_GROQ_API_KEY");
+    
+    let masked_key = if info.is_custom {
+        if info.key.len() > 8 {
+            format!("gsk_...{} (Custom Key - Unlimited)", &info.key[info.key.len() - 4..])
+        } else {
+            "Custom Key (Unlimited)".to_string()
+        }
     } else if is_configured {
-        "Configured".to_string()
+        format!("Shared Key ({}/{} Free Left Today)", info.free_queries_remaining, info.free_queries_limit)
     } else {
         "Not Set".to_string()
     };
@@ -603,6 +681,10 @@ async fn get_groq_key_status_handler(
         StatusCode::OK,
         Json(serde_json::json!({
             "is_configured": is_configured,
+            "is_custom": info.is_custom,
+            "free_queries_used": info.free_queries_used,
+            "free_queries_limit": info.free_queries_limit,
+            "free_queries_remaining": info.free_queries_remaining,
             "masked_key": masked_key
         })),
     ).into_response()
@@ -781,6 +863,18 @@ async fn transcribe_handler(
                 "message": "Empty audio body received."
             })),
         ).into_response();
+    }
+
+    if api_key_override.is_none() {
+        if let Err(limit_msg) = state.consume_shared_query() {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(serde_json::json!({
+                    "status": "error",
+                    "message": limit_msg
+                })),
+            ).into_response();
+        }
     }
 
     match state.groq.transcribe_audio(body.to_vec(), file_name, mime_type, api_key_override).await {

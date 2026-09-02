@@ -73,6 +73,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
           tagName: v__VERSION__
           releaseName: 'Aashu AI v__VERSION__'

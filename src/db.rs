@@ -237,6 +237,12 @@ impl Database {
         conn.execute("DELETE FROM settings", [])?;
         Ok(())
     }
+
+    pub fn get_current_date(&self) -> String {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row("SELECT strftime('%Y-%m-%d', 'now')", [], |r| r.get(0))
+            .unwrap_or_else(|_| "1970-01-01".to_string())
+    }
 }
 
 fn f32_slice_to_bytes(slice: &[f32]) -> Vec<u8> {

@@ -204,7 +204,7 @@
             if (!voices || voices.length === 0) return;
 
             const savedVoice = localStorage.getItem('aashu_tts_voice') || 'auto';
-            ttsVoiceSelect.innerHTML = '<option value="auto">✨ Default Auto-Select (Hindi / English)</option>';
+            ttsVoiceSelect.innerHTML = '<option value="auto">Default Auto-Select (Hindi / English)</option>';
 
             const hiVoices = [];
             const enInVoices = [];
@@ -239,10 +239,10 @@
                 ttsVoiceSelect.appendChild(optgroup);
             };
 
-            appendGroup(' Hindi Spoken Voices', hiVoices);
-            appendGroup(' Indian English Voices', enInVoices);
-            appendGroup(' English / US Voices', enUsVoices);
-            appendGroup('🌐 System / Other Voices', otherVoices);
+            appendGroup('Hindi Spoken Voices', hiVoices);
+            appendGroup('Indian English Voices', enInVoices);
+            appendGroup('English / US Voices', enUsVoices);
+            appendGroup('System / Other Voices', otherVoices);
 
             if (savedVoice === 'auto') {
                 ttsVoiceSelect.value = 'auto';
@@ -318,13 +318,13 @@
                 if (micPermissionStatus) {
                     if (state === 'granted') {
                         micPermissionStatus.className = 'status-badge-green';
-                        micPermissionStatus.textContent = '✅ Granted';
+                        micPermissionStatus.textContent = 'Granted';
                     } else if (state === 'denied') {
                         micPermissionStatus.className = 'status-badge-orange';
-                        micPermissionStatus.textContent = '❌ Blocked (Check OS Privacy)';
+                        micPermissionStatus.textContent = 'Blocked (Check OS Privacy)';
                     } else if (state === 'prompt') {
                         micPermissionStatus.className = 'status-badge-cyan';
-                        micPermissionStatus.textContent = '⏳ Not Yet Requested';
+                        micPermissionStatus.textContent = 'Not Yet Requested';
                     } else {
                         micPermissionStatus.className = 'status-badge-green';
                         micPermissionStatus.textContent = 'Ready (Default)';

@@ -14,7 +14,10 @@ impl Config {
     pub fn from_env() -> Self {
         let _ = dotenvy::dotenv();
 
-        let groq_api_key = env::var("GROQ_API_KEY").unwrap_or_default();
+        let groq_api_key = env::var("GROQ_API_KEY")
+            .ok()
+            .or_else(|| option_env!("GROQ_API_KEY").map(|s| s.to_string()))
+            .unwrap_or_default();
         let groq_model = env::var("GROQ_MODEL").unwrap_or_else(|_| "llama-3.3-70b-versatile".to_string());
         let port = env::var("PORT")
             .ok()

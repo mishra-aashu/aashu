@@ -8,10 +8,10 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-echo "📦 Installing Aashu AI Desktop Application..."
+echo "Installing Aashu AI Desktop Application..."
 
 # 1. Build Rust Release Binary
-echo "🔨 Compiling Rust release binary..."
+echo "Compiling Rust release binary..."
 cargo build --release
 
 # 2. Make scripts executable
@@ -46,10 +46,10 @@ fi
 
 echo ""
 echo "=========================================================="
-echo "✅ Aashu AI Desktop App Successfully Installed!"
+echo "Aashu AI Desktop App Successfully Installed!"
 echo "=========================================================="
 echo ""
 echo "Aap app ko 2 tarike se chala sakte hain:"
-echo "1️⃣ System App Menu: Apne Linux Start / App Menu me 'Aashu AI' search karke click karein."
-echo "2️⃣ Terminal: Project folder me './start-app.sh' run karein."
+echo "1. System App Menu: Apne Linux Start / App Menu me 'Aashu AI' search karke click karein."
+echo "2. Terminal: Project folder me './start-app.sh' run karein."
 echo ""
