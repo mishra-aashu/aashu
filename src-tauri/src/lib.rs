@@ -41,7 +41,8 @@ pub fn run() {
         use tauri::Manager;
         let main_webview = _app.get_webview_window("main").unwrap();
         let _ = main_webview.with_webview(|webview| {
-          use webkit2gtk::prelude::*;
+          use webkit2gtk::WebViewExt;
+          use webkit2gtk::PermissionRequestExt;
           let wv = webview.inner();
           wv.connect_permission_request(|_wv, request| {
             // Auto-allow all media permission requests (microphone, camera)
