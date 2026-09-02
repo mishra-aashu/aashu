@@ -40,7 +40,13 @@ impl Config {
             .ok();
 
         if let Some(home) = home_dir {
-            let app_data_dir = PathBuf::from(home).join(".local").join("share").join("aashu");
+            let app_data_dir = if cfg!(target_os = "windows") {
+                env::var("APPDATA")
+                    .map(|appdata| PathBuf::from(appdata).join("Aashu AI"))
+                    .unwrap_or_else(|_| PathBuf::from(&home).join("AppData").join("Roaming").join("Aashu AI"))
+            } else {
+                PathBuf::from(&home).join(".local").join("share").join("aashu")
+            };
             if let Err(e) = fs::create_dir_all(&app_data_dir) {
                 eprintln!("Failed to create AppData directory: {}", e);
                 return "memory.db".to_string();

@@ -7,8 +7,18 @@
     const API_BASE = window.location.origin;
 
     function getAuthHeaders() {
-        const token = localStorage.getItem('aashu_session_token');
-        return token ? { 'Authorization': `Bearer ${token}` } : {};
+        if (typeof window.getAuthHeaders === 'function') {
+            return window.getAuthHeaders();
+        }
+        const pwd = sessionStorage.getItem('aashu_session_password') ||
+                    localStorage.getItem('aashu_session_token') ||
+                    localStorage.getItem('aashu_session_password') ||
+                    sessionStorage.getItem('aashu_session_token') || '';
+        if (!pwd) return {};
+        return {
+            'x-app-password': pwd,
+            'Authorization': `Bearer ${pwd}`
+        };
     }
 
     // Helper speech response function

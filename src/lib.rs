@@ -107,6 +107,24 @@ fn check_authorization(
     }
 }
 
+fn resolve_public_dir() -> String {
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let candidate = exe_dir.join("public");
+            if candidate.exists() {
+                return candidate.to_string_lossy().to_string();
+            }
+            if let Some(parent) = exe_dir.parent() {
+                let candidate2 = parent.join("public");
+                if candidate2.exists() {
+                    return candidate2.to_string_lossy().to_string();
+                }
+            }
+        }
+    }
+    "public".to_string()
+}
+
 pub async fn start_server() -> anyhow::Result<()> {
     // Setup tracing/logging if not already initialized
     let subscriber = FmtSubscriber::builder()
@@ -148,7 +166,7 @@ pub async fn start_server() -> anyhow::Result<()> {
 
     let app = Router::new()
         .nest("/api", api_routes)
-        .fallback_service(ServeDir::new("public"))
+        .fallback_service(ServeDir::new(resolve_public_dir()))
         .layer(CorsLayer::permissive())
         .with_state(state);
 

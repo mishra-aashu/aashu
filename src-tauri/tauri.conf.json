@@ -19,7 +19,8 @@
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
-        "theme": "Dark"
+        "theme": "Dark",
+        "additionalBrowserArgs": "--autoplay-policy=no-user-gesture-required --enable-features=WebRtcHideLocalIpsWithMdns"
       }
     ],
     "security": {
@@ -44,6 +45,13 @@
     "linux": {
       "deb": {
         "depends": ["libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37", "libgtk-3-0"]
+      }
+    },
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true,
+        "installMode": "currentUser",
+        "languages": ["English", "Hindi"]
       }
     }
   }

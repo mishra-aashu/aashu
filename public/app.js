@@ -1,11 +1,89 @@
+window.showToast = function(message, type = 'info', duration = 3200) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast-item toast-${type}`;
+
+    let iconClass = 'fa-circle-info';
+    if (type === 'success') iconClass = 'fa-circle-check';
+    else if (type === 'error') iconClass = 'fa-circle-exclamation';
+    else if (type === 'warning') iconClass = 'fa-triangle-exclamation';
+
+    const safeMsg = (typeof message === 'string') ? message : String(message);
+
+    toast.innerHTML = `
+        <i class="fa-solid ${iconClass} toast-icon"></i>
+        <span class="toast-message">${safeMsg}</span>
+        <button class="toast-close-btn" onclick="this.parentElement.remove()">&times;</button>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-hiding');
+        setTimeout(() => {
+            if (toast.parentElement) toast.remove();
+        }, 300);
+    }, duration);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Dynamic API Base URL fallback if opened via file:// protocol directly
     const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
 
-    function getAuthHeaders() {
-        const pwd = sessionStorage.getItem('aashu_session_password') || '';
-        return pwd ? { 'x-app-password': pwd } : {};
+    // Initialize & Apply Theme System (5 Gradient Themes)
+    const savedTheme = localStorage.getItem('aashu_theme') || 'obsidian';
+    document.body.setAttribute('data-theme', savedTheme);
+
+    window.applyTheme = function(themeName) {
+        document.body.setAttribute('data-theme', themeName);
+        localStorage.setItem('aashu_theme', themeName);
+        syncSettingsThemeCards(themeName);
+        fetch(`${API_BASE}/api/remember`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ category: 'setting', text: `app_theme: ${themeName}` })
+        }).catch(() => {});
+    };
+
+    function syncSettingsThemeCards(themeName) {
+        document.querySelectorAll('#settings-theme-grid .theme-card').forEach(card => {
+            if (card.dataset.themeId === themeName) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
     }
+
+    setTimeout(() => {
+        syncSettingsThemeCards(savedTheme);
+        document.querySelectorAll('#settings-theme-grid .theme-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const tId = card.dataset.themeId;
+                window.applyTheme(tId);
+            });
+        });
+    }, 100);
+
+    function getAuthHeaders() {
+        const pwd = sessionStorage.getItem('aashu_session_password') ||
+                    localStorage.getItem('aashu_session_token') ||
+                    localStorage.getItem('aashu_session_password') ||
+                    sessionStorage.getItem('aashu_session_token') || '';
+        if (!pwd) return {};
+        return {
+            'x-app-password': pwd,
+            'Authorization': `Bearer ${pwd}`
+        };
+    }
+    window.getAuthHeaders = getAuthHeaders;
 
     // Check Onboarding
     const isOnboarded = localStorage.getItem('aashu_user_onboarded');
@@ -16,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (urlParamsCheck.has('reset')) {
         fetch(`${API_BASE}/api/reset-data`, { method: 'POST', headers: { ...getAuthHeaders() } }).finally(() => {
             localStorage.clear();
+            sessionStorage.clear();
             window.location.href = 'onboarding.html';
         });
         return;
@@ -37,6 +116,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const unlockBtn = document.getElementById('unlock-btn');
                 const errorMsg = document.getElementById('lock-error-msg');
 
+                // Check if already authenticated in session
+                const existingPwd = sessionStorage.getItem('aashu_session_password') || localStorage.getItem('aashu_session_token');
+                if (existingPwd) {
+                    const verifyRes = await fetch(`${API_BASE}/api/verify-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: existingPwd })
+                    });
+                    const verifyData = await verifyRes.json();
+                    if (verifyData && verifyData.success) {
+                        if (overlay) overlay.style.display = 'none';
+                        return;
+                    }
+                }
+
                 if (overlay) overlay.style.display = 'flex';
                 if (lockInput) lockInput.focus();
 
@@ -53,6 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const verifyData = await verifyRes.json();
                         if (verifyData && verifyData.success) {
                             sessionStorage.setItem('aashu_session_password', pwd);
+                            sessionStorage.setItem('aashu_session_token', pwd);
+                            localStorage.setItem('aashu_session_token', pwd);
+                            localStorage.setItem('aashu_session_password', pwd);
                             if (overlay) overlay.style.display = 'none';
                             loadFacts();
                             checkStatus();
@@ -98,6 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let customWakeWord = (localStorage.getItem('aashu_wake_word') || 'hey aashu').toLowerCase();
     let isWakeAwake = false;
 
+    // Language Mode — declared early so SpeechRecognition setup can use it
+    let currentLangMode = localStorage.getItem('aashu_lang_mode') || 'auto';
+
     // DOM Elements
     const micBtn    = document.getElementById('mic-btn');      // hero mic (welcome state)
     const micBtnInline = document.getElementById('mic-btn-2'); // inline mic in bar
@@ -106,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const micStatusLabel = document.getElementById('mic-status-label');
     const transcriptBox  = document.getElementById('transcript-box');
     const canvas    = document.getElementById('audio-wave-canvas');
-    const ctx       = canvas.getContext('2d');
+    const ctx       = canvas ? canvas.getContext('2d') : null;
 
     const toggleWakewordBtn = document.getElementById('toggle-wakeword-btn');
     const resetAppBtn       = document.getElementById('reset-app-btn');
@@ -165,14 +265,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Auto-grow textarea
-    manualTextInput.addEventListener('input', () => {
-        manualTextInput.style.height = 'auto';
-        manualTextInput.style.height = Math.min(manualTextInput.scrollHeight, 130) + 'px';
-    });
+    if (manualTextInput) {
+        manualTextInput.addEventListener('input', () => {
+            manualTextInput.style.height = 'auto';
+            manualTextInput.style.height = Math.min(manualTextInput.scrollHeight, 130) + 'px';
+        });
+    }
 
 
     // Initialize Canvas Dimensions
     function resizeCanvas() {
+        if (!canvas) return;
         canvas.width = canvas.parentElement.clientWidth;
         canvas.height = canvas.parentElement.clientHeight;
     }
@@ -182,13 +285,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Audio Wave Visualizer Animation (Multi-Layer Gradient & Particle Wave) ---
     let waveStep = 0;
     const particles = Array.from({ length: 18 }, () => ({
-        x: Math.random() * (canvas.width || 400),
+        x: Math.random() * ((canvas && canvas.width) || 400),
         speed: 1 + Math.random() * 2,
         radius: 1.5 + Math.random() * 2,
         alpha: 0.2 + Math.random() * 0.8
     }));
 
     function drawWave() {
+        if (!ctx || !canvas) { animationId = null; return; }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         const isAISpeaking = window.speechSynthesis && window.speechSynthesis.speaking;
@@ -294,121 +398,250 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'hi-IN';
+        try {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            // currentLangMode is declared above in State Variables section
+            recognition.lang = (currentLangMode === 'en-US') ? 'en-US' : 'hi-IN';
 
-        recognition.onstart = () => {
-            isRecording = true;
-            // Both mic buttons go red
-            micBtn.classList.add('recording');
-            micBtnInline.classList.add('recording');
-            micIcon.className = 'fa-solid fa-stop';
-            micIcon2.className = 'fa-solid fa-stop';
-            // Show transcript strip, show status
-            transcriptBox.style.display = 'flex';
-            micStatusLabel.style.display = 'block';
-            micStatusLabel.innerHTML = `<span style="color:var(--accent-pink);"><i class="fa-solid fa-circle"></i> Listening... pause to auto-send.</span>`;
-            startWaveAnimation();
-        };
-
-        recognition.onresult = (event) => {
-            let finalTranscript = '';
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-                else interimTranscript += event.results[i][0].transcript;
-            }
-
-            let rawSpeech = (finalTranscript + ' ' + interimTranscript).trim();
-
-            // Wake Word Detection ("Hey Aashu", "Aashu", "Ok Aashu", or custom phrase)
-            if (isWakeWordEnabled && !isWakeAwake) {
-                const lowerText = rawSpeech.toLowerCase();
-                const wakeKeywords = [customWakeWord, 'hey aashu', 'aashu', 'ok aashu', 'hello aashu', 'hey ashu'];
-                const matchedKeyword = wakeKeywords.find(kw => lowerText.includes(kw));
-
-                if (matchedKeyword) {
-                    isWakeAwake = true;
-                    if (wakewordStatusPill) wakewordStatusPill.classList.add('listening-active');
+            recognition.onstart = () => {
+                isRecording = true;
+                if (micBtn) micBtn.classList.add('recording');
+                if (micBtnInline) micBtnInline.classList.add('recording');
+                if (micIcon) micIcon.className = 'fa-solid fa-stop';
+                if (micIcon2) micIcon2.className = 'fa-solid fa-stop';
+                if (transcriptBox) transcriptBox.style.display = 'flex';
+                if (micStatusLabel) {
                     micStatusLabel.style.display = 'block';
-                    micStatusLabel.innerHTML = `<span style="color:var(--accent-pink); font-weight: 600;"><i class="fa-solid fa-bolt"></i> Woke Up! Listening to your prompt...</span>`;
-
-                    // Remove wake phrase from text buffer
-                    const regex = new RegExp(matchedKeyword, 'gi');
-                    rawSpeech = rawSpeech.replace(regex, '').trim();
-                    transcriptText.textContent = '';
+                    micStatusLabel.innerHTML = `<span style="color:var(--accent-pink); font-weight: 600;"><i class="fa-solid fa-circle fa-beat"></i> Listening... speak now or pause to auto-send.</span>`;
                 }
-            }
+                startWaveAnimation();
+            };
 
-            if (finalTranscript) transcriptText.textContent += ' ' + finalTranscript;
-            interimText.textContent = interimTranscript;
-            manualTextInput.value = (transcriptText.textContent + ' ' + interimTranscript).trim();
-            // Auto-grow textarea
-            manualTextInput.style.height = 'auto';
-            manualTextInput.style.height = Math.min(manualTextInput.scrollHeight, 130) + 'px';
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    else interimTranscript += event.results[i][0].transcript;
+                }
 
-            // Smart silence auto-submit
-            if (silenceTimer) clearTimeout(silenceTimer);
-            if (isRecording && manualTextInput.value.trim().length > 0) {
-                silenceTimer = setTimeout(() => {
-                    if (isRecording && manualTextInput.value.trim().length > 0) {
-                        micStatusLabel.innerHTML = `<span style="color:var(--accent-cyan);"><i class="fa-solid fa-paper-plane"></i> Auto-submitting prompt...</span>`;
-                        recognition.stop();
-                        stopRecording();
-                        submitRequest();
+                let rawSpeech = (finalTranscript + ' ' + interimTranscript).trim();
+
+                // Wake Word Detection ("Hey Aashu", "Aashu", "Ok Aashu", or custom phrase)
+                if (isWakeWordEnabled && !isWakeAwake) {
+                    const lowerText = rawSpeech.toLowerCase();
+                    const wakeKeywords = [customWakeWord, 'hey aashu', 'aashu', 'ok aashu', 'hello aashu', 'hey ashu'];
+                    const matchedKeyword = wakeKeywords.find(kw => lowerText.includes(kw));
+
+                    if (matchedKeyword) {
+                        isWakeAwake = true;
+                        if (wakewordStatusPill) wakewordStatusPill.classList.add('listening-active');
+                        micStatusLabel.style.display = 'block';
+                        micStatusLabel.innerHTML = `<span style="color:var(--accent-pink); font-weight: 600;"><i class="fa-solid fa-bolt"></i> Woke Up! Listening to your prompt...</span>`;
+
+                        // Remove wake phrase from text buffer
+                        const regex = new RegExp(matchedKeyword, 'gi');
+                        rawSpeech = rawSpeech.replace(regex, '').trim();
+                        if (transcriptText) transcriptText.textContent = '';
                     }
-                }, SILENCE_THRESHOLD_MS);
-            }
-        };
+                }
 
-        recognition.onerror = (event) => {
-            console.warn('Speech recognition error:', event.error);
-            stopRecording();
-            micStatusLabel.innerHTML = `<span style="color:var(--accent-pink);">Mic error: ${event.error}. Tap mic to retry.</span>`;
-            micStatusLabel.style.display = 'block';
-        };
+                if (finalTranscript && transcriptText) transcriptText.textContent += ' ' + finalTranscript;
+                if (interimText) interimText.textContent = interimTranscript;
+                if (manualTextInput) {
+                    manualTextInput.value = (transcriptText.textContent + ' ' + interimTranscript).trim();
+                    manualTextInput.style.height = 'auto';
+                    manualTextInput.style.height = Math.min(manualTextInput.scrollHeight, 130) + 'px';
+                }
 
-        recognition.onend = () => { if (!silenceTimer) stopRecording(); };
+                // Smart silence auto-submit
+                if (silenceTimer) clearTimeout(silenceTimer);
+                if (isRecording && manualTextInput && manualTextInput.value.trim().length > 0) {
+                    silenceTimer = setTimeout(() => {
+                        if (isRecording && manualTextInput.value.trim().length > 0) {
+                            if (micStatusLabel) {
+                                micStatusLabel.innerHTML = `<span style="color:var(--accent-cyan); font-weight: 600;"><i class="fa-solid fa-paper-plane"></i> Auto-submitting prompt...</span>`;
+                            }
+                            try { recognition.stop(); } catch(e) {}
+                            stopRecording();
+                            submitRequest();
+                        }
+                    }, SILENCE_THRESHOLD_MS);
+                }
+            };
 
+            recognition.onerror = (event) => {
+                console.warn('Speech recognition error:', event.error);
+                stopRecording();
+                let errMsg = `Mic error: ${event.error}`;
+                if (event.error === 'not-allowed') {
+                    errMsg = 'Microphone permission denied! Please allow mic access in your browser settings.';
+                } else if (event.error === 'no-speech') {
+                    errMsg = 'No speech detected. Tap mic to try again.';
+                } else if (event.error === 'audio-capture') {
+                    errMsg = 'No microphone device found on system.';
+                }
+                if (micStatusLabel) {
+                    micStatusLabel.innerHTML = `<span style="color:var(--accent-pink);"><i class="fa-solid fa-triangle-exclamation"></i> ${errMsg}</span>`;
+                    micStatusLabel.style.display = 'block';
+                }
+                if (window.showToast) window.showToast(errMsg, 'error');
+            };
+
+            recognition.onend = () => {
+                if (!silenceTimer) stopRecording();
+            };
+        } catch (err) {
+            console.warn("Failed to instantiate SpeechRecognition:", err);
+            recognition = null;
+        }
     } else {
-        micStatusLabel.textContent = 'Speech not supported. Use Chrome or Edge.';
-        micStatusLabel.style.display = 'block';
-        if (micBtn) { micBtn.disabled = true; micBtn.style.opacity = '0.4'; }
-        if (micBtnInline) { micBtnInline.disabled = true; micBtnInline.style.opacity = '0.4'; }
+        if (micStatusLabel) {
+            micStatusLabel.textContent = '';
+            micStatusLabel.style.display = 'none';
+        }
     }
 
-    function toggleRecording() {
-        if (!recognition) return;
+    // === Microphone Permission Pre-Check & Recovery System (Linux + Windows) ===
+    async function checkMicPermission() {
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const result = await navigator.permissions.query({ name: 'microphone' });
+                return result.state; // 'granted', 'denied', or 'prompt'
+            } catch (e) {
+                // WebKitGTK on Linux may throw TypeError for microphone in permissions.query
+                console.warn('Permissions API query for microphone not supported on this engine:', e);
+            }
+        }
+        return 'unknown';
+    }
+    window.checkMicPermission = checkMicPermission;
+
+    async function requestMicPermission() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.warn('MediaDevices API unavailable');
+            return true; // Proceed to SpeechRecognition directly if getUserMedia missing
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+            console.log('✅ Microphone access granted');
+            return true;
+        } catch (err) {
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                console.warn('❌ Microphone access denied by user or system');
+                showMicBlockedGuide();
+                return false;
+            } else if (err.name === 'NotFoundError') {
+                console.warn('🎤 No microphone device found');
+                if (window.showToast) window.showToast('No microphone device found on Linux system.', 'warning');
+                return false;
+            }
+            console.error('Mic permission error:', err);
+            return false;
+        }
+    }
+    window.requestMicPermission = requestMicPermission;
+
+    function showMicBlockedGuide() {
+        const isWin = navigator.userAgent.includes('Windows');
+        const isLinux = navigator.userAgent.includes('Linux') || navigator.platform.includes('Linux');
+        
+        let guide = '🎤 Microphone blocked! Please check your system privacy settings to allow microphone access.';
+        if (isWin) {
+            guide = '🎤 Microphone blocked! Go to Windows Settings → Privacy & Security → Microphone → Enable "Let desktop apps access your microphone"';
+        } else if (isLinux) {
+            guide = '🎤 Microphone blocked on Linux! Check System Settings → Privacy → Microphone, or verify your PulseAudio/PipeWire input permissions.';
+        }
+        if (window.showToast) window.showToast(guide, 'error', 8000);
+    }
+    window.showMicBlockedGuide = showMicBlockedGuide;
+
+    // Expose globally so HTML onclick="window.toggleRecording(event)" works as backup
+    window.toggleRecording = async function toggleRecording(e) {
+        if (e && e.preventDefault) e.preventDefault();
+
+        if (recognition && !isRecording) {
+            const permState = await checkMicPermission();
+            if (permState === 'denied') {
+                showMicBlockedGuide();
+                return;
+            }
+            if (permState === 'prompt') {
+                const granted = await requestMicPermission();
+                if (!granted) return;
+            }
+        }
+
+        if (!recognition) {
+            // SpeechRecognition not available (WebKit/Tauri webview)
+            if (micBtn) micBtn.classList.add('recording');
+            if (micBtnInline) micBtnInline.classList.add('recording');
+            if (micIcon) micIcon.className = 'fa-solid fa-keyboard';
+            if (micIcon2) micIcon2.className = 'fa-solid fa-keyboard';
+            if (micStatusLabel) {
+                micStatusLabel.style.display = 'block';
+                micStatusLabel.innerHTML = `<span style="color:var(--accent-cyan); font-weight:600;"><i class="fa-solid fa-circle-info"></i> Voice not supported here — type your query below and press Enter.</span>`;
+            }
+            if (manualTextInput) {
+                manualTextInput.focus();
+                manualTextInput.placeholder = 'Type your query here and press Enter...';
+            }
+            if (window.showToast) window.showToast('Voice input unavailable in this webview. Please type below.', 'info');
+            setTimeout(() => {
+                if (micBtn) micBtn.classList.remove('recording');
+                if (micBtnInline) micBtnInline.classList.remove('recording');
+                if (micIcon) micIcon.className = 'fa-solid fa-microphone';
+                if (micIcon2) micIcon2.className = 'fa-solid fa-microphone';
+                if (micStatusLabel) micStatusLabel.style.display = 'none';
+            }, 3000);
+            return;
+        }
+
         if (isRecording) {
-            recognition.stop();
+            try { recognition.stop(); } catch (err) { console.warn('Stop recognition error:', err); }
             stopRecording();
         } else {
             if (silenceTimer) clearTimeout(silenceTimer);
-            transcriptText.textContent = '';
-            interimText.textContent = '';
-            manualTextInput.value = '';
-            manualTextInput.style.height = 'auto';
-            recognition.start();
+            if (transcriptText) transcriptText.textContent = '';
+            if (interimText) interimText.textContent = '';
+            if (manualTextInput) { manualTextInput.value = ''; manualTextInput.style.height = 'auto'; }
+
+            // SpeechRecognition handles mic permission internally.
+            // Browser remembers the grant — no getUserMedia needed (that causes a second prompt).
+            try {
+                recognition.start();
+            } catch (startErr) {
+                if (startErr.name === 'InvalidStateError') {
+                    // Already started — stop and reset
+                    try { recognition.stop(); } catch(e) {}
+                    stopRecording();
+                } else {
+                    stopRecording();
+                    if (window.showToast) window.showToast('Could not start mic: ' + startErr.message, 'error');
+                }
+            }
         }
-    }
+    };
 
     function stopRecording() {
         if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
         isRecording = false;
         isWakeAwake = false;
         if (wakewordStatusPill) wakewordStatusPill.classList.remove('listening-active');
-        micBtn.classList.remove('recording');
-        micBtnInline.classList.remove('recording');
-        micIcon.className = 'fa-solid fa-microphone';
-        micIcon2.className = 'fa-solid fa-microphone';
-        transcriptBox.style.display = 'none';
-        micStatusLabel.style.display = 'none';
+        if (micBtn) micBtn.classList.remove('recording');
+        if (micBtnInline) micBtnInline.classList.remove('recording');
+        if (micIcon) micIcon.className = 'fa-solid fa-microphone';
+        if (micIcon2) micIcon2.className = 'fa-solid fa-microphone';
+        if (transcriptBox) transcriptBox.style.display = 'none';
+        if (micStatusLabel) micStatusLabel.style.display = 'none';
     }
 
-    if (micBtn) micBtn.addEventListener('click', toggleRecording);
-    if (micBtnInline) micBtnInline.addEventListener('click', toggleRecording);
+    // Attach click listeners (window.toggleRecording also covers HTML onclick fallback)
+    if (micBtn) micBtn.addEventListener('click', window.toggleRecording);
+    if (micBtnInline) micBtnInline.addEventListener('click', window.toggleRecording);
 
     // Wake Word Toggle & Customization Handlers
     function updateWakeWordUI() {
@@ -491,16 +724,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Spacebar shortcut
+    // Spacebar shortcut — triggers mic when no text is being typed
+    // If textarea is focused but EMPTY, Space starts voice. If text exists, Space types normally.
     document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' && document.activeElement !== manualTextInput && document.activeElement !== memorySearchInput) {
-            e.preventDefault();
-            toggleRecording();
+        if (e.code !== 'Space') return;
+
+        const active = document.activeElement;
+        const tag = active ? active.tagName : '';
+
+        // Always skip if inside search, modal inputs, selects, or contenteditable
+        if (active === memorySearchInput || tag === 'INPUT' || tag === 'SELECT') return;
+        if (active && active.isContentEditable) return;
+
+        // If inside the main textarea: only hijack if it's empty (no text typed yet)
+        if (active === manualTextInput) {
+            if (manualTextInput.value.trim().length > 0) return; // let Space type normally
         }
+
+        e.preventDefault();
+        window.toggleRecording(e);
     });
 
     // Language Mode Toggle State ('auto', 'hi-IN', 'en-US')
-    let currentLangMode = localStorage.getItem('aashu_lang_mode') || 'auto';
+    // Note: currentLangMode is declared early in State Variables above; this section just sets up the UI
     const langPill = document.getElementById('lang-pill');
     const langLabel = document.getElementById('lang-label');
 
@@ -563,39 +809,49 @@ document.addEventListener('DOMContentLoaded', () => {
         window.speechSynthesis.speak(utterance);
     }
 
-    toggleVoiceBtn.addEventListener('click', () => {
-        isVoiceOutputEnabled = !isVoiceOutputEnabled;
-        if (isVoiceOutputEnabled) {
-            voiceIcon.className = 'fa-solid fa-volume-high';
-            toggleVoiceBtn.style.color = 'var(--accent-cyan)';
-        } else {
-            voiceIcon.className = 'fa-solid fa-volume-xmark';
-            toggleVoiceBtn.style.color = 'var(--text-muted)';
-            window.speechSynthesis.cancel();
-        }
-    });
+    if (toggleVoiceBtn) {
+        toggleVoiceBtn.addEventListener('click', () => {
+            isVoiceOutputEnabled = !isVoiceOutputEnabled;
+            if (isVoiceOutputEnabled) {
+                if (voiceIcon) voiceIcon.className = 'fa-solid fa-volume-high';
+                toggleVoiceBtn.style.color = 'var(--accent-cyan)';
+            } else {
+                if (voiceIcon) voiceIcon.className = 'fa-solid fa-volume-xmark';
+                toggleVoiceBtn.style.color = 'var(--text-muted)';
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            }
+        });
+    }
 
-    speakResponseBtn.addEventListener('click', () => speakText(responseBodyText.textContent));
+    if (speakResponseBtn && responseBodyText) {
+        speakResponseBtn.addEventListener('click', () => speakText(responseBodyText.textContent));
+    }
 
     // --- Mode Pills ---
-    modeAskBtn.addEventListener('click', () => setMode('ask'));
-    modeRememberBtn.addEventListener('click', () => setMode('remember'));
+    if (modeAskBtn) modeAskBtn.addEventListener('click', () => setMode('ask'));
+    if (modeRememberBtn) modeRememberBtn.addEventListener('click', () => setMode('remember'));
 
     function setMode(mode) {
         currentMode = mode;
         if (mode === 'ask') {
-            modeAskBtn.classList.add('active');
-            modeRememberBtn.classList.remove('active');
-            manualTextInput.placeholder = "Ask anything based on your stored memory...";
+            if (modeAskBtn) modeAskBtn.classList.add('active');
+            if (modeRememberBtn) modeRememberBtn.classList.remove('active');
+            if (manualTextInput) manualTextInput.placeholder = "Ask anything based on your stored memory...";
         } else {
-            modeRememberBtn.classList.add('active');
-            modeAskBtn.classList.remove('active');
-            manualTextInput.placeholder = "Tell me a fact to store... (e.g. 'I moved to Berlin in 2024')";
+            if (modeRememberBtn) modeRememberBtn.classList.add('active');
+            if (modeAskBtn) modeAskBtn.classList.remove('active');
+            if (manualTextInput) manualTextInput.placeholder = "Tell me a fact to store... (e.g. 'I moved to Berlin in 2024')";
         }
     }
 
     // --- Sidebar Toggle ---
-    toggleSidebarBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+    if (toggleSidebarBtn && sidebar) {
+        toggleSidebarBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+    }
+    if (sidebarCloseBtn && sidebar) {
+        sidebarCloseBtn.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+    }
 
     // --- Multi-Turn Conversation Thread State ---
     let chatHistory = [];
@@ -623,10 +879,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function scrollToBottom() {
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
+        const chatArea = document.getElementById('chat-area');
+        if (chatArea) {
             setTimeout(() => {
-                mainContent.scrollTo({ top: mainContent.scrollHeight, behavior: 'smooth' });
+                chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
             }, 50);
         }
     }
@@ -659,13 +915,29 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
-        // Inline Formatting
+        // Headings ###
+        formatted = formatted.replace(/^### (.*$)/gim, '<h4 class="md-heading">$1</h4>');
+        formatted = formatted.replace(/^## (.*$)/gim, '<h3 class="md-heading">$1</h3>');
+        formatted = formatted.replace(/^# (.*$)/gim, '<h2 class="md-heading">$1</h2>');
+
+        // Bold & Italic & Inline Code
         formatted = formatted
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-            .replace(/^\s*[-•]\s+(.*)$/gm, '<li class="response-li">$1</li>')
-            .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+            .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+
+        // Convert bullet list lines starting with -, *, or • into <li> items
+        formatted = formatted.replace(/^\s*[-•*]\s+(.*)$/gm, '<li class="md-li">$1</li>');
+        // Wrap consecutive <li> into <ul class="md-ul">
+        formatted = formatted.replace(/(<li class="md-li">[\s\S]*?<\/li>)(?!\s*<li class="md-li">)/g, '<ul class="md-ul">$1</ul>');
+        
+        // Convert numbered list items 1. 2. into <ol>
+        formatted = formatted.replace(/^\s*\d+\.\s+(.*)$/gm, '<li class="md-oli">$1</li>');
+        formatted = formatted.replace(/(<li class="md-oli">[\s\S]*?<\/li>)(?!\s*<li class="md-oli">)/g, '<ol class="md-ol">$1</ol>');
+
+        // Linebreaks & Paragraph Spacing
+        formatted = formatted.replace(/\n\n/g, '<div class="md-spacer"></div>');
+        formatted = formatted.replace(/(?<!<\/ul>|<\/ol>|<\/div>|<\/h2>|<\/h3>|<\/h4>|<\/li>)\n/g, '<br>');
 
         return formatted;
     }
@@ -712,11 +984,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderUserBubble(text) {
         const row = document.createElement('div');
         row.className = 'message-bubble-row user-bubble-row';
+        const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         row.innerHTML = `
             <div class="message-bubble user-bubble">
                 <div class="bubble-header">
-                    <span class="bubble-author">${userName || 'You'}</span>
-                    <span class="bubble-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span class="bubble-author"><i class="fa-solid fa-user text-cyan"></i> ${escapeHTML(userName || 'You')}</span>
+                    <span class="bubble-dot">•</span>
+                    <span class="bubble-time">${timeStr}</span>
                 </div>
                 <div class="bubble-body">${escapeHTML(text).replace(/\n/g, '<br>')}</div>
             </div>
@@ -739,17 +1013,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAIBubble(text, retrievedFacts, modelUsed) {
         const row = document.createElement('div');
         row.className = 'message-bubble-row ai-bubble-row';
+        const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
         let factsHTML = '';
         if (retrievedFacts && retrievedFacts.length > 0) {
             factsHTML = `
                 <div class="context-facts-container">
-                    <h4><i class="fa-solid fa-database text-cyan"></i> ${retrievedFacts.length} Vector Memory Facts Used:</h4>
+                    <div class="context-facts-title">
+                        <i class="fa-solid fa-brain text-cyan"></i>
+                        <span>${retrievedFacts.length} Vector Memory Facts Used:</span>
+                    </div>
                     <div class="context-facts-grid">
                         ${retrievedFacts.map(f => `
                             <div class="context-fact-pill">
                                 <div class="context-fact-header">
-                                    <span class="category-badge"><i class="fa-solid fa-tag"></i> ${f.category || 'General'}</span>
+                                    <span class="category-badge"><i class="fa-solid fa-tag"></i> ${escapeHTML(f.category || 'General')}</span>
                                     ${f.score ? `<span class="score-badge">${Math.round(f.score * 100)}% Match</span>` : ''}
                                 </div>
                                 <div class="fact-body-text">${escapeHTML(f.fact)}</div>
@@ -766,12 +1044,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="bubble-avatar ai-avatar"><i class="fa-solid fa-robot"></i></div>
             <div class="message-bubble ai-bubble">
                 <div class="bubble-header">
-                    <span class="bubble-author"><i class="fa-solid fa-sparkles text-cyan"></i> Aashu AI ${modelUsed ? `<span style="font-weight:normal; opacity:0.75; font-size:11px;">(${modelUsed})</span>` : ''}</span>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="bubble-author-box">
+                        <span class="bubble-author"><i class="fa-solid fa-sparkles text-cyan"></i> Aashu AI</span>
+                        ${modelUsed ? `<span class="model-tag-badge">${escapeHTML(modelUsed)}</span>` : ''}
+                    </div>
+                    <div class="bubble-header-right">
                         <button class="icon-btn-sm speak-bubble-btn" title="Replay Speech">
                             <i class="fa-solid fa-volume-high"></i>
                         </button>
-                        <span class="bubble-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span class="bubble-dot">•</span>
+                        <span class="bubble-time">${timeStr}</span>
                     </div>
                 </div>
                 <div class="bubble-body">${formattedBody}</div>
@@ -874,31 +1156,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- API Send ---
-    sendBtn.addEventListener('click', submitRequest);
-    manualTextInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitRequest(); }
-    });
+    if (sendBtn) sendBtn.addEventListener('click', submitRequest);
+    if (manualTextInput) {
+        manualTextInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitRequest(); }
+        });
+    }
 
     async function submitRequest() {
-        const text = manualTextInput.value.trim();
+        const text = manualTextInput ? manualTextInput.value.trim() : '';
         if (!text) return;
 
         const selectedModel = modelSelector ? modelSelector.value : null;
-        if (isRecording) { recognition.stop(); stopRecording(); }
+        if (isRecording) {
+            if (recognition) { try { recognition.stop(); } catch(e) {} }
+            stopRecording();
+        }
 
         // Switch from Welcome state to Chat Stream
-        welcomeState.style.display = 'none';
-        chatStreamContainer.style.display = 'flex';
+        if (welcomeState) welcomeState.style.display = 'none';
+        if (chatStreamContainer) chatStreamContainer.style.display = 'flex';
 
         // Check for Smart Voice Commands & Quick Intent Triggers
         if (window.VoiceCommands && await window.VoiceCommands.processCommand(text)) {
-            manualTextInput.value = '';
-            manualTextInput.style.height = 'auto';
+            if (manualTextInput) { manualTextInput.value = ''; manualTextInput.style.height = 'auto'; }
             return;
         }
 
-        manualTextInput.value = '';
-        manualTextInput.style.height = 'auto';
+        if (manualTextInput) { manualTextInput.value = ''; manualTextInput.style.height = 'auto'; }
 
         if (currentMode === 'remember') {
             renderUserBubble(`[Remember Fact] ${text}`);
@@ -1093,7 +1378,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const is_pinned = editFactPinnedChk.checked;
 
             if (!updatedFact) {
-                alert('Fact text cannot be empty');
+                showToast('Fact text cannot be empty', 'warning');
                 return;
             }
 
@@ -1110,9 +1395,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error('Failed to update fact');
 
                 closeEditModal();
+                showToast('Memory fact updated successfully!', 'success');
                 await loadFacts();
             } catch (err) {
-                alert('Error updating memory fact: ' + err.message);
+                showToast('Error updating memory fact: ' + err.message, 'error');
             } finally {
                 saveEditFactBtn.disabled = false;
                 saveEditFactBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
@@ -1136,15 +1422,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!confirm('Delete this memory fact from local vector store?')) return;
         try {
             await fetch(`${API_BASE}/api/facts/${id}`, { method: 'DELETE', headers: { ...getAuthHeaders() } });
+            showToast('Memory fact deleted successfully', 'info');
             await loadFacts();
         } catch (err) {
-            alert('Failed to delete fact');
+            showToast('Failed to delete fact', 'error');
         }
     };
 
-    memorySearchInput.addEventListener('input', () => {
-        applyMemoryFilters();
-    });
+    if (memorySearchInput) {
+        memorySearchInput.addEventListener('input', () => {
+            applyMemoryFilters();
+        });
+    }
 
     // --- System Status Check ---
     const installAppBtn = document.getElementById('install-app-btn');

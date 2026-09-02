@@ -22,6 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -39,7 +40,12 @@
                     <img src="/icon.svg" alt="App Icon" class="brand-logo" width="32" height="32">
                     <h2>Aashu AI</h2>
                 </div>
-                <span class="badge" id="facts-count-badge">0 Facts</span>
+                <div class="sidebar-header-right">
+                    <span class="badge" id="facts-count-badge">0 Facts</span>
+                    <button class="sidebar-close-btn" id="sidebar-close-btn" title="Close Sidebar (Esc)">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="sidebar-search">
@@ -66,16 +72,12 @@
             <!-- Top Navbar -->
             <header class="top-nav">
                 <div class="top-nav-left">
-                    <button class="icon-btn" id="toggle-sidebar-btn" title="Toggle Memory Drawer">
-                        <i class="fa-solid fa-folder-open"></i>
+                    <button class="icon-btn" id="toggle-sidebar-btn" title="Toggle Memory Sidebar">
+                        <i class="fa-solid fa-bars-staggered"></i>
                     </button>
                     <div class="status-pill" id="system-status" title="Backend Server Connection">
                         <span class="dot green" id="status-dot"></span>
                         <span id="status-text">Online</span>
-                    </div>
-                    <div class="active-model-badge" id="active-model-badge" title="Active LLM Model">
-                        <i class="fa-solid fa-brain text-cyan"></i>
-                        <span id="active-model-name">Llama 3.3 (70B)</span>
                     </div>
                 </div>
 
@@ -140,6 +142,31 @@
 
                             <div class="menu-divider"></div>
 
+                            <!-- Keyboard Shortcuts Info Section -->
+                            <div class="menu-header">
+                                <span><i class="fa-solid fa-keyboard text-cyan"></i> Keyboard Shortcuts</span>
+                            </div>
+                            <div class="menu-shortcuts-grid">
+                                <div class="menu-shortcut-item">
+                                    <span>Voice Input</span>
+                                    <kbd>Space</kbd>
+                                </div>
+                                <div class="menu-shortcut-item">
+                                    <span>Send Message</span>
+                                    <kbd>Enter</kbd>
+                                </div>
+                                <div class="menu-shortcut-item">
+                                    <span>Search Memories</span>
+                                    <span><kbd>Ctrl</kbd>+<kbd>/</kbd></span>
+                                </div>
+                                <div class="menu-shortcut-item">
+                                    <span>Toggle Sidebar</span>
+                                    <kbd>Esc</kbd>
+                                </div>
+                            </div>
+
+                            <div class="menu-divider"></div>
+
                             <!-- Settings & Diagnostics Modal Trigger -->
                             <button class="menu-action-btn" id="open-settings-menu-item">
                                 <i class="fa-solid fa-gear text-cyan"></i>
@@ -169,7 +196,7 @@
                         </button>
                     </div>
                     <p class="welcome-hint">
-                        Press <kbd>Space</kbd> or say <strong id="welcome-wake-hint" style="color:var(--accent-pink);">"Hey Aashu"</strong> &mdash; speak naturally, pause to auto-send.
+                        Press <kbd>Space</kbd> to talk, or type your query below
                     </p>
                 </div>
 
@@ -249,10 +276,6 @@
                 <div class="mic-status-label" id="mic-status-label" style="display: none;"></div>
 
             </div><!-- end unified-input-bar -->
-
-            <footer class="app-footer">
-                <span><kbd>Space</kbd> Mic &nbsp;&bull;&nbsp; <kbd>Enter</kbd> Send &nbsp;&bull;&nbsp; <kbd>Ctrl</kbd>+<kbd>/</kbd> Search &nbsp;&bull;&nbsp; <kbd>Esc</kbd> Sidebar</span>
-            </footer>
         </main>
     </div>
 
@@ -383,6 +406,45 @@
                 <!-- Tab 1: API Key & Security -->
                 <div class="settings-tab-panel active" id="tab-api-key">
                     <div class="settings-section-title">
+                        <i class="fa-solid fa-palette"></i> Visual Gradient Theme
+                    </div>
+                    <p class="settings-description">
+                        Switch between 7 ultra-modern gradient themes in real-time across the entire application.
+                    </p>
+                    <div class="theme-selector-grid" id="settings-theme-grid">
+                        <div class="theme-card" data-theme-id="obsidian">
+                            <div class="theme-card-preview obsidian-preview"></div>
+                            <span>Obsidian</span>
+                        </div>
+                        <div class="theme-card" data-theme-id="cyber">
+                            <div class="theme-card-preview cyber-preview"></div>
+                            <span>Cyber</span>
+                        </div>
+                        <div class="theme-card" data-theme-id="aurora">
+                            <div class="theme-card-preview aurora-preview"></div>
+                            <span>Aurora</span>
+                        </div>
+                        <div class="theme-card" data-theme-id="nebula">
+                            <div class="theme-card-preview nebula-preview"></div>
+                            <span>Sunset</span>
+                        </div>
+                        <div class="theme-card" data-theme-id="royal">
+                            <div class="theme-card-preview royal-preview"></div>
+                            <span>Amethyst</span>
+                        </div>
+                        <div class="theme-card" data-theme-id="solar">
+                            <div class="theme-card-preview solar-preview"></div>
+                            <span>Solar</span>
+                        </div>
+                        <div class="theme-card" data-theme-id="sapphire">
+                            <div class="theme-card-preview sapphire-preview"></div>
+                            <span>Oceanic</span>
+                        </div>
+                    </div>
+
+                    <div class="menu-divider" style="margin: 24px 0;"></div>
+
+                    <div class="settings-section-title">
                         <i class="fa-solid fa-key"></i> Groq Cloud API Key
                     </div>
                     <p class="settings-description">
@@ -442,6 +504,24 @@
 
                     <div style="margin-top: 16px; text-align: right;">
                         <button class="btn btn-secondary" id="test-tts-btn"><i class="fa-solid fa-play"></i> Test Spoken Speech</button>
+                    </div>
+
+                    <div class="menu-divider" style="margin: 24px 0;"></div>
+
+                    <div class="settings-section-title">
+                        <i class="fa-solid fa-microphone"></i> Microphone Access & Permissions
+                    </div>
+                    <p class="settings-description">
+                        Check or re-request microphone permissions for voice input and wake word detection.
+                    </p>
+
+                    <div class="form-group">
+                        <label>Microphone Status: <span id="mic-permission-status" class="status-badge-cyan">Checking...</span></label>
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-secondary" id="reset-mic-permission-btn">
+                                <i class="fa-solid fa-rotate-right"></i> Re-request Mic Permission
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -7,8 +7,18 @@
     const API_BASE = window.location.origin;
 
     function getAuthHeaders() {
-        const token = localStorage.getItem('aashu_session_token');
-        return token ? { 'Authorization': `Bearer ${token}` } : {};
+        if (typeof window.getAuthHeaders === 'function') {
+            return window.getAuthHeaders();
+        }
+        const pwd = sessionStorage.getItem('aashu_session_password') ||
+                    localStorage.getItem('aashu_session_token') ||
+                    localStorage.getItem('aashu_session_password') ||
+                    sessionStorage.getItem('aashu_session_token') || '';
+        if (!pwd) return {};
+        return {
+            'x-app-password': pwd,
+            'Authorization': `Bearer ${pwd}`
+        };
     }
 
     // --- TTS Pitch & Rate Preferences ---
@@ -105,11 +115,17 @@
             }
         }
 
+        function triggerToast(msg, type = 'info') {
+            if (typeof window.showToast === 'function') {
+                window.showToast(msg, type);
+            }
+        }
+
         if (saveGroqKeyBtn) {
             saveGroqKeyBtn.addEventListener('click', async () => {
                 const newKey = groqApiKeyInput ? groqApiKeyInput.value.trim() : '';
                 if (!newKey) {
-                    alert('Please enter a valid Groq API Key.');
+                    triggerToast('Please enter a valid Groq API Key.', 'warning');
                     return;
                 }
 
@@ -125,15 +141,15 @@
 
                     const data = await res.json();
                     if (res.ok) {
-                        alert('Groq API Key updated successfully!');
+                        triggerToast('Groq API Key updated successfully!', 'success');
                         if (groqApiKeyInput) groqApiKeyInput.value = '';
                         await loadGroqKeyStatus();
                         await loadDiagnostics();
                     } else {
-                        alert(`Error: ${data.message}`);
+                        triggerToast(data.message || 'Error saving Groq Key', 'error');
                     }
                 } catch (err) {
-                    alert(`Failed to save Groq Key: ${err.message}`);
+                    triggerToast(`Failed to save Groq Key: ${err.message}`, 'error');
                 } finally {
                     saveGroqKeyBtn.disabled = false;
                     saveGroqKeyBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Key`;
@@ -148,7 +164,7 @@
                 const newPass = newPassInput ? newPassInput.value.trim() : '';
 
                 if (!newPass) {
-                    alert('Please enter a new password / PIN.');
+                    triggerToast('Please enter a new password / PIN.', 'warning');
                     return;
                 }
 
@@ -164,14 +180,14 @@
 
                     const data = await res.json();
                     if (res.ok) {
-                        alert('Security password / PIN updated successfully!');
+                        triggerToast('Security password / PIN updated successfully!', 'success');
                         if (currentPassInput) currentPassInput.value = '';
                         if (newPassInput) newPassInput.value = '';
                     } else {
-                        alert(`Error updating password: ${data.message}`);
+                        triggerToast(data.message || 'Error updating password', 'error');
                     }
                 } catch (err) {
-                    alert(`Failed to update password: ${err.message}`);
+                    triggerToast(`Failed to update password: ${err.message}`, 'error');
                 } finally {
                     changePassBtn.disabled = false;
                     changePassBtn.innerHTML = `<i class="fa-solid fa-key"></i> Update Security Lock`;
@@ -213,6 +229,49 @@
                 }
             });
         }
+
+        // --- Microphone Permission Control & Status ---
+        const micPermissionStatus = document.getElementById('mic-permission-status');
+        const resetMicBtn = document.getElementById('reset-mic-permission-btn');
+
+        async function updateMicPermissionStatus() {
+            if (typeof window.checkMicPermission === 'function') {
+                const state = await window.checkMicPermission();
+                if (micPermissionStatus) {
+                    if (state === 'granted') {
+                        micPermissionStatus.className = 'status-badge-green';
+                        micPermissionStatus.textContent = '✅ Granted';
+                    } else if (state === 'denied') {
+                        micPermissionStatus.className = 'status-badge-orange';
+                        micPermissionStatus.textContent = '❌ Blocked (Check OS Privacy)';
+                    } else if (state === 'prompt') {
+                        micPermissionStatus.className = 'status-badge-cyan';
+                        micPermissionStatus.textContent = '⏳ Not Yet Requested';
+                    } else {
+                        micPermissionStatus.className = 'status-badge-green';
+                        micPermissionStatus.textContent = 'Ready (Default)';
+                    }
+                }
+            }
+        }
+
+        if (resetMicBtn) {
+            resetMicBtn.addEventListener('click', async () => {
+                if (typeof window.requestMicPermission === 'function') {
+                    resetMicBtn.disabled = true;
+                    resetMicBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Requesting...`;
+                    const ok = await window.requestMicPermission();
+                    if (ok) {
+                        triggerToast('Microphone permission granted successfully!', 'success');
+                    }
+                    await updateMicPermissionStatus();
+                    resetMicBtn.disabled = false;
+                    resetMicBtn.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Re-request Mic Permission`;
+                }
+            });
+        }
+
+        updateMicPermissionStatus();
 
         // 4. Load System Diagnostics
         async function loadDiagnostics() {
