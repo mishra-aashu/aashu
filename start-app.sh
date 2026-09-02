@@ -12,8 +12,11 @@ echo "🚀 Starting Aashu AI Native Desktop Application..."
 
 # 1. If pre-compiled binary exists
 if [ -f "$SCRIPT_DIR/src-tauri/target/release/aashu-ai" ]; then
-    echo "✨ Launching compiled Tauri Native App binary..."
+    echo "✨ Launching compiled Tauri Native App binary (Release)..."
     "$SCRIPT_DIR/src-tauri/target/release/aashu-ai" &
+elif [ -f "$SCRIPT_DIR/src-tauri/target/debug/aashu-ai" ]; then
+    echo "✨ Launching compiled Tauri Native App binary (Debug)..."
+    "$SCRIPT_DIR/src-tauri/target/debug/aashu-ai" &
 elif [ -f "$SCRIPT_DIR/bin/aashu-ai" ]; then
     echo "✨ Launching compiled Tauri Native App binary from bin/..."
     "$SCRIPT_DIR/bin/aashu-ai" &

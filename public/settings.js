@@ -4,7 +4,7 @@
  */
 
 (function () {
-    const API_BASE = window.location.origin;
+    const API_BASE = typeof window.getApiBase === 'function' ? window.getApiBase() : (window.location.protocol === 'file:' ? 'http://localhost:3000' : '');
 
     function getAuthHeaders() {
         if (typeof window.getAuthHeaders === 'function') {

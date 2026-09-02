@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../public",
     "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "cargo run",
+    "beforeDevCommand": "",
     "beforeBuildCommand": ""
   },
   "app": {

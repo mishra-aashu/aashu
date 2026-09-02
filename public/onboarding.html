@@ -975,9 +975,11 @@
             localStorage.setItem('aashu_wake_word', wakeWord.toLowerCase());
 
             // API Endpoint
-            const API_BASE = (window.location.protocol === 'file:' || !window.location.port)
-                ? 'http://localhost:3000'
-                : window.location.origin;
+            const API_BASE = (window.getApiBase && typeof window.getApiBase === 'function') 
+                ? window.getApiBase() 
+                : ((window.location.protocol === 'file:' || !window.location.port || window.location.hostname === 'tauri.localhost' || window.location.protocol === 'tauri:')
+                    ? 'http://localhost:3000'
+                    : window.location.origin);
 
             try {
                 if (appPassword && appPassword.trim()) {

@@ -33,9 +33,25 @@ window.showToast = function(message, type = 'info', duration = 3200) {
     }, duration);
 };
 
+function getApiBase() {
+    if (window.API_BASE !== undefined && window.API_BASE !== '') return window.API_BASE;
+    const isTauri = window.__TAURI_INTERNALS__ !== undefined || 
+                    window.__TAURI__ !== undefined || 
+                    window.location.hostname === 'tauri.localhost' || 
+                    window.location.protocol === 'tauri:';
+    const isFile = window.location.protocol === 'file:';
+    const isLocalDesktopNoPort = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '3000';
+
+    if (isTauri || isFile || isLocalDesktopNoPort) {
+        return 'http://localhost:3000';
+    }
+    return '';
+}
+window.getApiBase = getApiBase;
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Dynamic API Base URL fallback if opened via file:// protocol directly
-    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+    // Dynamic API Base URL fallback
+    const API_BASE = getApiBase();
 
     // Initialize & Apply Theme System (5 Gradient Themes)
     const savedTheme = localStorage.getItem('aashu_theme') || 'obsidian';
@@ -1143,7 +1159,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="bubble-body">${escapeHTML(text).replace(/\n/g, '<br>')}</div>
             </div>
-            <div class="bubble-avatar user-avatar"><i class="fa-solid fa-user"></i></div>
         `;
         chatThreadBody.appendChild(row);
         scrollToBottom();
@@ -1190,7 +1205,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedBody = formatMarkdown(text);
 
         row.innerHTML = `
-            <div class="bubble-avatar ai-avatar"><i class="fa-solid fa-robot"></i></div>
             <div class="message-bubble ai-bubble">
                 <div class="bubble-header">
                     <div class="bubble-author-box">
@@ -1225,7 +1239,6 @@ document.addEventListener('DOMContentLoaded', () => {
         row.className = 'message-bubble-row ai-bubble-row typing-row';
         row.id = 'typing-indicator-row';
         row.innerHTML = `
-            <div class="bubble-avatar ai-avatar"><i class="fa-solid fa-robot"></i></div>
             <div class="message-bubble ai-bubble typing-bubble">
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -1589,94 +1602,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const offlineBanner = document.getElementById('offline-banner');
     const statusDot = document.getElementById('status-dot');
 
-    async function checkStatus() {
-        try {
-            const res = await fetch(`${API_BASE}/api/status`);
-            const data = await res.json();
-            systemStatusText.textContent = `Backend: ${data.status}`;
-            if (statusDot) statusDot.className = 'dot green';
-            if (groqModelName) groqModelName.textContent = data.llm_model;
-            if (offlineBanner) offlineBanner.style.display = 'none';
-        } catch (e) {
-            systemStatusText.textContent = 'Backend: Disconnected';
-            if (statusDot) statusDot.className = 'dot red';
-            if (offlineBanner) offlineBanner.style.display = 'flex';
-        }
-    }
-
-    // --- PWA Installation & Service Worker ---
-    let deferredPrompt = null;
-
-    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('[App] Service Worker registered with scope:', reg.scope))
-                .catch(err => console.warn('[App] Service Worker registration skipped:', err));
-        });
-    }
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        if (installAppBtn) installAppBtn.style.display = 'flex';
-    });
-
-    if (installAppBtn) {
-        installAppBtn.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`[App] PWA install choice: ${outcome}`);
-            deferredPrompt = null;
-            installAppBtn.style.display = 'none';
-        });
-    }
-
-    window.addEventListener('appinstalled', () => {
-        console.log('[App] Voice Memory PWA was installed successfully!');
-        if (installAppBtn) installAppBtn.style.display = 'none';
-    });
-
-    // Network Online/Offline Event Listeners
-    function updateNetworkStatus() {
-        if (!navigator.onLine) {
-            if (offlineBanner) offlineBanner.style.display = 'flex';
-            if (systemStatusText) systemStatusText.textContent = 'Backend: Offline';
-            if (statusDot) statusDot.className = 'dot red';
-        } else {
-            if (offlineBanner) offlineBanner.style.display = 'none';
-            checkStatus();
-        }
-    }
-
-    window.addEventListener('online', updateNetworkStatus);
-    window.addEventListener('offline', updateNetworkStatus);
-
-    // Keyboard Shortcuts (Ctrl+/ for Search, Esc for Sidebar)
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-            e.preventDefault();
-            if (sidebar.classList.contains('collapsed')) {
-                sidebar.classList.remove('collapsed');
+    async function initBackendConnection() {
+        let attempts = 0;
+        const maxAttempts = 15; // Retry for up to 7.5s on app launch
+        while (attempts < maxAttempts) {
+            try {
+                const res = await fetch(`${API_BASE}/api/status`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (systemStatusText) systemStatusText.textContent = `Backend: ${data.status}`;
+                    if (statusDot) statusDot.className = 'dot green';
+                    if (groqModelName) groqModelName.textContent = data.llm_model;
+                    if (offlineBanner) offlineBanner.style.display = 'none';
+                    await loadFacts();
+                    await checkAppLock();
+                    return;
+                }
+            } catch (e) {
+                // Backend server is still binding socket in background task
             }
-            memorySearchInput.focus();
-        } else if (e.key === 'Escape') {
-            if (!sidebar.classList.contains('collapsed')) {
-                sidebar.classList.add('collapsed');
-            }
+            attempts++;
+            await new Promise(r => setTimeout(r, 500));
         }
-    });
 
-    // URL Shortcut Parameters (?mode=ask or ?mode=remember)
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialMode = urlParams.get('mode');
-    if (initialMode === 'ask' || initialMode === 'remember') {
-        setMode(initialMode);
+        if (systemStatusText) systemStatusText.textContent = 'Backend: Disconnected';
+        if (statusDot) statusDot.className = 'dot red';
+        if (offlineBanner) offlineBanner.style.display = 'flex';
     }
 
-    // Initial Calls
-    loadFacts();
-    checkStatus();
+    // Initial Calls with Retry Handshake
+    initBackendConnection();
     setInterval(checkStatus, 10000);
 });
 
